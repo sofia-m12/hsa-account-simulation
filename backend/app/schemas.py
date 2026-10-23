@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from uuid import UUID
@@ -50,6 +52,31 @@ class DepositResponse(BaseModel):
     account: AccountResponse
     transaction_id: UUID
     amount_cents: int
+
+
+class PurchaseCreate(BaseModel):
+    card_token: str = Field(min_length=16, max_length=16)
+    amount: str
+    merchant: str = Field(min_length=1, max_length=120)
+    category: str = Field(min_length=1, max_length=80)
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, value: str) -> str:
+        return DepositCreate.validate_amount(value)
+
+    @field_validator("card_token", "merchant", "category")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("value must not be blank")
+        return value
+
+
+class PurchaseResponse(BaseModel):
+    account: AccountResponse
+    transaction: TransactionResponse
 
 
 class TransactionResponse(BaseModel):
