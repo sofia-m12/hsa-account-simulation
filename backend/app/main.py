@@ -2,8 +2,10 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from .database import engine
+from .routes.accounts import router as accounts_router
 
 app = FastAPI(title="HSA Account Simulation")
+app.include_router(accounts_router)
 
 
 @app.get("/health")
