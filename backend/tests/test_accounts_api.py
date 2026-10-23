@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from fastapi.testclient import TestClient
@@ -173,3 +174,108 @@ def test_issue_card_documents_new_and_existing_success_responses(client):
 
     assert "201" in operation["responses"]
     assert "200" in operation["responses"]
+
+
+def _issue_card_token(client, account_id):
+    client.post(f"/api/accounts/{account_id}/card")
+    with engine.connect() as connection:
+        return connection.execute(
+            text("SELECT token FROM cards WHERE account_id = :account_id"),
+            {"account_id": account_id},
+        ).scalar_one()
+
+
+def test_qualified_purchase_approves_and_debits_balance(client):
+    account = client.post("/api/accounts", json={"holder_name": "Buyer"}).json()
+    token = _issue_card_token(client, account["id"])
+    client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "100.00"})
+
+    response = client.post(
+        f"/api/accounts/{account['id']}/purchases",
+        json={"card_token": token, "amount": "80.00", "merchant": "Clinic", "category": "medical"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["transaction"]["outcome"] == "APPROVED"
+    assert response.json()["account"]["balance_cents"] == 2000
+
+
+@pytest.mark.parametrize(
+    ("category", "reason"),
+    [("travel", "UNQUALIFIED_EXPENSE"), ("medical", "INSUFFICIENT_FUNDS")],
+)
+def test_purchase_declines_without_debit(client, category, reason):
+    account = client.post("/api/accounts", json={"holder_name": "Buyer"}).json()
+    token = _issue_card_token(client, account["id"])
+    client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "50.00"})
+
+    response = client.post(
+        f"/api/accounts/{account['id']}/purchases",
+        json={"card_token": token, "amount": "80.00", "merchant": "Store", "category": category},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["transaction"]["outcome"] == "DECLINED"
+    assert body["transaction"]["decline_reason"] == reason
+    assert body["account"]["balance_cents"] == 5000
+
+
+def test_purchase_rejects_invalid_card(client):
+    account = client.post("/api/accounts", json={"holder_name": "Buyer"}).json()
+    _issue_card_token(client, account["id"])
+    response = client.post(
+        f"/api/accounts/{account['id']}/purchases",
+        json={"card_token": "0" * 16, "amount": "1.00", "merchant": "Clinic", "category": "medical"},
+    )
+    assert response.status_code == 201
+    assert response.json()["transaction"]["decline_reason"] == "INVALID_CARD"
+
+
+def test_concurrent_purchases_approve_exactly_one(client):
+    account = client.post("/api/accounts", json={"holder_name": "Concurrent Buyer"}).json()
+    token = _issue_card_token(client, account["id"])
+    client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "100.00"})
+
+    def purchase(amount):
+        with TestClient(app, raise_server_exceptions=False) as concurrent_client:
+            return concurrent_client.post(
+                f"/api/accounts/{account['id']}/purchases",
+                json={"card_token": token, "amount": amount, "merchant": "Clinic", "category": "medical"},
+            )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(purchase, ["80.00", "50.00"]))
+
+    assert [response.status_code for response in responses] == [201, 201]
+    assert sum(response.json()["transaction"]["outcome"] == "APPROVED" for response in responses) == 1
+    assert client.get(f"/api/accounts/{account['id']}").json()["balance_cents"] in {2000, 5000}
+
+
+def test_purchase_rolls_back_debit_when_activity_insert_fails(client):
+    account = client.post("/api/accounts", json={"holder_name": "Rollback Buyer"}).json()
+    token = _issue_card_token(client, account["id"])
+    client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "25.00"})
+    with engine.begin() as connection:
+        connection.execute(text("""
+            CREATE OR REPLACE FUNCTION reject_purchase_activity() RETURNS trigger AS $$
+            BEGIN
+                IF NEW.kind = 'PURCHASE' THEN RAISE EXCEPTION 'forced purchase failure'; END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+            CREATE TRIGGER reject_purchase_activity_trigger
+            BEFORE INSERT ON transactions
+            FOR EACH ROW EXECUTE FUNCTION reject_purchase_activity();
+        """))
+    try:
+        response = client.post(
+            f"/api/accounts/{account['id']}/purchases",
+            json={"card_token": token, "amount": "10.00", "merchant": "Clinic", "category": "medical"},
+        )
+        assert response.status_code == 500
+        assert client.get(f"/api/accounts/{account['id']}").json()["balance_cents"] == 2500
+    finally:
+        with engine.begin() as connection:
+            connection.execute(text("DROP TRIGGER IF EXISTS reject_purchase_activity_trigger ON transactions"))
+            connection.execute(text("DROP FUNCTION IF EXISTS reject_purchase_activity()"))
