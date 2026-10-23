@@ -6,7 +6,9 @@ services:
       POSTGRES_USER: hsa
       POSTGRES_PASSWORD: hsa
     ports: ["5432:5432"]
-    volumes: [postgres_dev_data:/var/lib/postgresql/data]
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hsa -d hsa"]
       interval: 5s
@@ -21,6 +23,18 @@ services:
     ports: ["8000:8000"]
     volumes:
       - ./backend:/app
+    depends_on:
+      db: { condition: service_healthy }
+
+  seed:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: hsa
+      SEED_DATA: ${SEED_DATA:-true}
+    volumes:
+      - ./backend/seed.sql:/seed.sql:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: "if [ \"$$SEED_DATA\" = \"true\" ]; then psql -h db -U hsa -d hsa -f /seed.sql; else echo 'Seed data disabled'; fi"
     depends_on:
       db: { condition: service_healthy }
 

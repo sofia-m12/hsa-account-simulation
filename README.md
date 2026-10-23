@@ -38,6 +38,26 @@ python -m pip install -r backend/requirements.txt
 Start PostgreSQL separately with `docker compose up db`, or use a native PostgreSQL
 database and set `DATABASE_URL` in `.env` (see `.env.example`).
 
+### Database initialization and seed data
+
+On first startup, PostgreSQL automatically applies `backend/schema.sql`, then the
+Compose seed service runs `backend/seed.sql` by default. The seed is repeatable
+and creates sample account, card, deposit, and purchase data.
+
+To start without seed data:
+
+```sh
+SEED_DATA=false docker compose up --build
+```
+
+The schema initialization runs only when the PostgreSQL volume is new. To reset
+the local database and initialize it again:
+
+```sh
+docker compose down -v
+docker compose up --build
+```
+
 Start the API:
 ```sh
 cd backend
