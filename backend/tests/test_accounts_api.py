@@ -104,6 +104,49 @@ def test_deposit_returns_404_for_unknown_account(client):
     assert response.status_code == 404
 
 
+def test_activity_history_exposes_deposit_and_purchase_decisions_in_newest_order(client):
+    account = client.post("/api/accounts", json={"holder_name": "Activity Viewer"}).json()
+    token = _issue_card_token(client, account["id"])
+    deposit = client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "100.00"})
+    approved = client.post(
+        f"/api/accounts/{account['id']}/purchases",
+        json={"card_token": token, "amount": "25.00", "merchant": "Dental Office", "category": "dental"},
+    )
+    declined = client.post(
+        f"/api/accounts/{account['id']}/purchases",
+        json={"card_token": token, "amount": "10.00", "merchant": "Travel Store", "category": "travel"},
+    )
+
+    response = client.get(f"/api/accounts/{account['id']}/transactions")
+
+    assert response.status_code == 200
+    history = response.json()
+    assert [entry["id"] for entry in history] == [
+        declined.json()["transaction"]["id"],
+        approved.json()["transaction"]["id"],
+        deposit.json()["transaction_id"],
+    ]
+    assert history[0]["kind"] == "PURCHASE"
+    assert history[0]["merchant"] == "Travel Store"
+    assert history[0]["category"] == "travel"
+    assert history[0]["outcome"] == "DECLINED"
+    assert history[0]["decline_reason"] == "UNQUALIFIED_EXPENSE"
+    assert history[1]["kind"] == "PURCHASE"
+    assert history[1]["amount_cents"] == 2500
+    assert history[1]["outcome"] == "APPROVED"
+    assert history[1]["decline_reason"] is None
+    assert history[2]["kind"] == "DEPOSIT"
+    assert history[2]["amount_cents"] == 10000
+    assert history[2]["merchant"] is None
+    assert history[2]["category"] is None
+
+
+def test_activity_history_returns_404_for_unknown_account(client):
+    response = client.get("/api/accounts/00000000-0000-0000-0000-000000000099/transactions")
+
+    assert response.status_code == 404
+
+
 def test_deposit_rolls_back_balance_when_activity_insert_fails(client):
     account = client.post("/api/accounts", json={"holder_name": "Rollback"}).json()
     with engine.begin() as connection:
