@@ -29,7 +29,8 @@ services:
     volumes:
       - ./backend/seed.sql:/seed.sql:ro
     entrypoint: ["/bin/sh", "-c"]
-    command: "if [ \"$$SEED_DATA\" = \"true\" ]; then psql -h db -U hsa -d hsa -f /seed.sql; else echo 'Seed data disabled'; fi"
+    command:
+      - 'if [ "$$SEED_DATA" = "true" ]; then psql -h db -U hsa -d hsa -f /seed.sql; else echo "Seed data disabled"; fi'
     depends_on:
       db: { condition: service_healthy }
   frontend:

@@ -1,8 +1,9 @@
 -- Optional development data. Apply backend/schema.sql first.
 -- Safe to run repeatedly because the identifiers are fixed.
-INSERT INTO accounts (id, holder_name, currency, balance_cents)
-VALUES ('00000000-0000-0000-0000-000000000001', 'Sample Account Holder', 'USD', 5000)
+INSERT INTO accounts (id, account_number, holder_name, currency, balance_cents)
+VALUES ('00000000-0000-0000-0000-000000000001', 1000000000, 'Sample Account Holder', 'USD', 5000)
 ON CONFLICT (id) DO NOTHING;
+SELECT setval('account_number_seq', GREATEST((SELECT COALESCE(MAX(account_number), 999999999) FROM accounts), 1000000000));
 INSERT INTO cards (id, account_id, token)
 VALUES ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', '4242424242424242')
 ON CONFLICT (id) DO NOTHING;

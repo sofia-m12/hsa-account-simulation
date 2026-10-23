@@ -1,8 +1,14 @@
 -- Initial HSA simulation schema. Apply once to an empty PostgreSQL database.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE SEQUENCE account_number_seq
+    AS BIGINT
+    START WITH 1000000000
+    INCREMENT BY 1;
+
 CREATE TABLE accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_number BIGINT NOT NULL UNIQUE DEFAULT nextval('account_number_seq'),
     holder_name TEXT NOT NULL
         CHECK (char_length(trim(holder_name)) BETWEEN 1 AND 120),
     currency CHAR(3) NOT NULL DEFAULT 'USD',
