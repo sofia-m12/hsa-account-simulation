@@ -26,3 +26,18 @@ cards = Table(
     Column("token", String(16), nullable=False),
     Column("issued_at", DateTime(timezone=True), nullable=False),
 )
+
+transactions = Table(
+    "transactions",
+    metadata,
+    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("account_id", UUID, nullable=False),
+    Column("card_id", UUID),
+    Column("kind", String, nullable=False),
+    Column("amount_cents", Integer, nullable=False),
+    Column("merchant", Text),
+    Column("category", Text),
+    Column("outcome", String, nullable=False),
+    Column("decline_reason", String),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
+)
