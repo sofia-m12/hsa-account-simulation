@@ -2,13 +2,13 @@
 
 ### Issue tracker
 
-No issue tracker is used for this take-home. Work from the next focused item in `deliverables/commit-plan.md`; do not create issues, tickets, or pull requests.
+No issue tracker; follow `docs/planning/commit-plan.md` for focused work. See `docs/agents/issue-tracker.md`.
 
 Use `/implement` for a decided slice from that plan. Use `/grill-me` first when an important product or design decision is still unsettled; keep the decision in the conversation or update the existing project documentation rather than creating a separate spec.
 
 ### Domain docs
 
-The take-home assignment defines requirements. `architecture.md` is the project brief for the agreed behavior, architecture, and tradeoffs. Use React + TypeScript + Vite, FastAPI + Pydantic, PostgreSQL, SQLAlchemy + psycopg, and `backend/schema.sql`. Keep PostgreSQL-only Docker Compose and native PostgreSQL setup documented.
+Single-context domain docs: root `GLOSSARY.md` and `docs/adr/`. See `docs/agents/domain.md`.
 
 Use `/tdd` for money handling, purchase decisions, atomicity, and concurrency behavior. Run the relevant tests and frontend checks, then use `/code-review` on the local diff against the assignment and `architecture.md`.
 
