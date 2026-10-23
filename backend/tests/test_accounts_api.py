@@ -21,7 +21,7 @@ def clean_accounts():
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return TestClient(app, raise_server_exceptions=False)
 
 
 def test_create_account_returns_zero_balance_usd_and_normalized_name(client):
@@ -62,3 +62,69 @@ def test_account_persists_after_a_new_request(client):
     response = client.get(f"/api/accounts/{created['id']}")
     assert response.status_code == 200
     assert response.json()["account_number"] == created["account_number"]
+
+
+def test_deposit_increments_balance_and_records_activity(client):
+    account = client.post("/api/accounts", json={"holder_name": "Depositor"}).json()
+
+    response = client.post(
+        f"/api/accounts/{account['id']}/deposits", json={"amount": "25.50"}
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["account"]["balance_cents"] == 2550
+    assert body["amount_cents"] == 2550
+    assert body["transaction_id"]
+
+    activity = client.get(f"/api/accounts/{account['id']}/transactions")
+    assert activity.status_code == 200
+    assert activity.json()[0]["kind"] == "DEPOSIT"
+    assert activity.json()[0]["amount_cents"] == 2550
+    assert activity.json()[0]["outcome"] == "APPROVED"
+
+
+@pytest.mark.parametrize("amount", ["0", "-1.00", "10000.01", "1.001", "not-money"])
+def test_deposit_rejects_invalid_amounts(client, amount):
+    account = client.post("/api/accounts", json={"holder_name": "Depositor"}).json()
+
+    response = client.post(
+        f"/api/accounts/{account['id']}/deposits", json={"amount": amount}
+    )
+
+    assert response.status_code == 422
+
+
+def test_deposit_returns_404_for_unknown_account(client):
+    response = client.post(
+        "/api/accounts/00000000-0000-0000-0000-000000000099/deposits",
+        json={"amount": "1.00"},
+    )
+    assert response.status_code == 404
+
+
+def test_deposit_rolls_back_balance_when_activity_insert_fails(client):
+    account = client.post("/api/accounts", json={"holder_name": "Rollback"}).json()
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE OR REPLACE FUNCTION reject_deposit_activity() RETURNS trigger AS $$
+                BEGIN RAISE EXCEPTION 'forced activity failure'; END;
+                $$ LANGUAGE plpgsql;
+                CREATE TRIGGER reject_deposit_activity_trigger
+                BEFORE INSERT ON transactions
+                FOR EACH ROW EXECUTE FUNCTION reject_deposit_activity();
+                """
+            )
+        )
+    try:
+        response = client.post(
+            f"/api/accounts/{account['id']}/deposits", json={"amount": "10.00"}
+        )
+        assert response.status_code == 500
+        assert client.get(f"/api/accounts/{account['id']}").json()["balance_cents"] == 0
+    finally:
+        with engine.begin() as connection:
+            connection.execute(text("DROP TRIGGER IF EXISTS reject_deposit_activity_trigger ON transactions"))
+            connection.execute(text("DROP FUNCTION IF EXISTS reject_deposit_activity()"))
