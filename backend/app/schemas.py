@@ -63,3 +63,10 @@ class TransactionResponse(BaseModel):
     outcome: str
     decline_reason: str | None
     created_at: datetime
+
+
+class CardResponse(BaseModel):
+    id: UUID
+    account_id: UUID
+    card_last4: str
+    issued_at: datetime

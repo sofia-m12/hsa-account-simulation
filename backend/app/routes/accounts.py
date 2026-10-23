@@ -1,14 +1,22 @@
 from uuid import UUID
 
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, status
+import secrets
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import insert, select, update
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_db
 from ..models import accounts, cards, transactions
-from ..schemas import AccountCreate, AccountResponse, DepositCreate, DepositResponse, TransactionResponse
+from ..schemas import (
+    AccountCreate,
+    AccountResponse,
+    CardResponse,
+    DepositCreate,
+    DepositResponse,
+    TransactionResponse,
+)
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -68,6 +76,50 @@ def get_account(account_id: UUID, db: Session = Depends(get_db)) -> AccountRespo
     if row is None:
         raise HTTPException(status_code=404, detail="Account not found")
     return _to_response(row)
+
+
+def _card_response(row) -> CardResponse:
+    values = row._mapping
+    return CardResponse(
+        id=values["id"],
+        account_id=values["account_id"],
+        card_last4=values["token"][-4:],
+        issued_at=values["issued_at"],
+    )
+
+
+@router.post(
+    "/{account_id}/card",
+    response_model=CardResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={200: {"model": CardResponse, "description": "Existing card returned"}},
+)
+def issue_card(account_id: UUID, response: Response, db: Session = Depends(get_db)) -> CardResponse:
+    existing = db.execute(select(cards).where(cards.c.account_id == account_id)).first()
+    if existing is not None:
+        response.status_code = status.HTTP_200_OK
+        return _card_response(existing)
+    if db.execute(select(accounts.c.id).where(accounts.c.id == account_id)).first() is None:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        row = db.execute(
+            insert(cards)
+            .values(account_id=account_id, token=f"{secrets.randbelow(10**16):016d}")
+            .returning(cards)
+        ).first()
+        db.commit()
+        return _card_response(row)
+    except IntegrityError:
+        db.rollback()
+        existing = db.execute(select(cards).where(cards.c.account_id == account_id)).first()
+        if existing is not None:
+            response.status_code = status.HTTP_200_OK
+            return _card_response(existing)
+        raise HTTPException(status_code=500, detail="Internal server error while issuing card")
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error while issuing card")
 
 
 @router.post("/{account_id}/deposits", response_model=DepositResponse, status_code=status.HTTP_201_CREATED)

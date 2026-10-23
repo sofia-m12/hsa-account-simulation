@@ -21,10 +21,10 @@ accounts = Table(
 cards = Table(
     "cards",
     metadata,
-    Column("id", UUID, primary_key=True),
+    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
     Column("account_id", UUID, nullable=False),
     Column("token", String(16), nullable=False),
-    Column("issued_at", DateTime(timezone=True), nullable=False),
+    Column("issued_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
 )
 
 transactions = Table(
