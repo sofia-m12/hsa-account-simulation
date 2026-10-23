@@ -58,6 +58,18 @@ docker compose down -v
 docker compose up --build
 ```
 
+The backend test fixture clears whichever database `DATABASE_URL` targets; the command below points it at `hsa_test`.
+
+Tests use the separate `hsa_test` database so development data is not cleared:
+
+```sh
+docker compose down -v
+docker compose up -d db
+docker compose run --rm --build -v "$PWD/backend/tests:/app/tests:ro" \
+  -e DATABASE_URL=postgresql+psycopg://hsa:hsa@db:5432/hsa_test \
+  -e PYTHONPATH=/app backend pytest tests -q
+```
+
 Start the API:
 ```sh
 cd backend
