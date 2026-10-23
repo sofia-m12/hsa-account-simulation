@@ -128,3 +128,48 @@ def test_deposit_rolls_back_balance_when_activity_insert_fails(client):
         with engine.begin() as connection:
             connection.execute(text("DROP TRIGGER IF EXISTS reject_deposit_activity_trigger ON transactions"))
             connection.execute(text("DROP FUNCTION IF EXISTS reject_deposit_activity()"))
+
+
+def test_issue_card_returns_safe_fields_and_updates_account_lookup(client):
+    account = client.post("/api/accounts", json={"holder_name": "Cardholder"}).json()
+
+    response = client.post(f"/api/accounts/{account['id']}/card")
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["id"]
+    assert body["account_id"] == account["id"]
+    assert len(body["card_last4"]) == 4
+    assert body["card_last4"].isdigit()
+    assert body["issued_at"]
+    assert "token" not in body
+
+    refreshed = client.get(f"/api/accounts/{account['id']}")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["card_last4"] == body["card_last4"]
+
+
+def test_issue_card_is_idempotent_for_repeated_requests(client):
+    account = client.post("/api/accounts", json={"holder_name": "Repeat Card"}).json()
+
+    first = client.post(f"/api/accounts/{account['id']}/card")
+    second = client.post(f"/api/accounts/{account['id']}/card")
+
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert second.json() == first.json()
+
+
+def test_issue_card_returns_404_for_unknown_account(client):
+    response = client.post(
+        "/api/accounts/00000000-0000-0000-0000-000000000099/card"
+    )
+
+    assert response.status_code == 404
+
+
+def test_issue_card_documents_new_and_existing_success_responses(client):
+    operation = app.openapi()["paths"]["/api/accounts/{account_id}/card"]["post"]
+
+    assert "201" in operation["responses"]
+    assert "200" in operation["responses"]
