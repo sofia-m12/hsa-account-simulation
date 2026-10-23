@@ -27,3 +27,7 @@ npm-debug.log*
 *.sqlite3
 *.db
 *.dump
+
+# Local Codex/agent skills
+.agents/
+skills-lock.json
