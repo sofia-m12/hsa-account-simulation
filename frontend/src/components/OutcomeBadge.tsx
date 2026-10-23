@@ -1,11 +1,4 @@
-import type { Outcome } from '../data/mock'
-
-const outcomeClass: Record<Outcome, string> = {
-  Approved: 'badge badge--approved',
-  Declined: 'badge badge--declined',
-  Deposit: 'badge badge--deposit',
-}
-
-export function OutcomeBadge({ outcome }: { outcome: Outcome }) {
-  return <span className={outcomeClass[outcome]}>{outcome}</span>
+export function OutcomeBadge({ outcome, reason }: { outcome: string; reason?: string | null }) {
+  const label = outcome === 'APPROVED' ? 'Approved' : reason ? `Declined · ${reason}` : 'Declined'
+  return <span className={`badge badge--${outcome.toLowerCase()}`}>{label}</span>
 }

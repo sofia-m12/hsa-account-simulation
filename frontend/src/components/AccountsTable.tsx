@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import type { Account } from '../data/mock'
-import { formatDate } from '../data/mock'
+import type { Account } from '../data/api'
+import { formatDate, formatUsd } from '../data/api'
 
 type AccountsTableProps = {
   accounts: Account[]
@@ -22,6 +22,7 @@ export function AccountsTable({ accounts }: AccountsTableProps) {
           <tr>
             <th scope="col">Acct. #</th>
             <th scope="col">Holder</th>
+            <th scope="col">Balance</th>
             <th scope="col">Date created</th>
           </tr>
         </thead>
@@ -30,11 +31,12 @@ export function AccountsTable({ accounts }: AccountsTableProps) {
             <tr key={account.id}>
               <td>
                 <Link className="table-link" to={`/accounts/${account.id}`}>
-                  {account.accountNumber}
+                  {account.account_number}
                 </Link>
               </td>
-              <td>{account.holder}</td>
-              <td>{formatDate(account.dateCreated)}</td>
+              <td>{account.holder_name}</td>
+              <td>{formatUsd(account.balance_cents)}</td>
+              <td>{formatDate(account.created_at)}</td>
             </tr>
           ))}
         </tbody>

@@ -95,5 +95,6 @@ class TransactionResponse(BaseModel):
 class CardResponse(BaseModel):
     id: UUID
     account_id: UUID
+    token: str
     card_last4: str
     issued_at: datetime

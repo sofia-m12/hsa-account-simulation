@@ -280,7 +280,7 @@
 
 @media (min-width: 900px) {
   .account-page__layout {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1.4fr) minmax(220px, 1fr);
     gap: var(--space-6);
     align-items: start;
   }
@@ -290,11 +290,43 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
+}
+
+.account-page__activity {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .account-page__actions {
   display: flex;
-  justify-content: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.account-action {
+  min-height: 38px;
+  padding: var(--space-2) var(--space-4);
+  width: 100%;
+}
+
+.account-action-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.account-action-row .btn:last-child {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.account-action-row .btn:last-child:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-ink) 88%, white);
 }
 
 @media (min-width: 900px) {

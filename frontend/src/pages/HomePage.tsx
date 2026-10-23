@@ -1,64 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AccountsTable } from '../components/AccountsTable'
 import { Button } from '../components/Button'
+import { CreateAccountModal } from '../components/CreateAccountModal'
 import { Panel } from '../components/Panel'
 import { TransactionsTable } from '../components/TransactionsTable'
-import {
-  mockAccounts,
-  mockTransactions,
-  type Account,
-  type Transaction,
-} from '../data/mock'
+import { api, type Account, type Transaction } from '../data/api'
 
 export function HomePage() {
   const navigate = useNavigate()
-  const [accounts, setAccounts] = useState<Account[]>(mockAccounts)
-  const [transactions] = useState<Transaction[]>(mockTransactions)
-
-  const recentTransactions = useMemo(
-    () =>
-      [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
-    [transactions],
-  )
-
-  function handleCreateAccount() {
-    const nextIndex = accounts.length + 1
-    const id = String(Date.now())
-    setAccounts((current) => [
-      ...current,
-      {
-        id,
-        accountNumber: String(1000 + nextIndex),
-        holder: `New holder ${nextIndex}`,
-        dateCreated: new Date().toISOString().slice(0, 10),
-        cardNumber: '•••• ----',
-        balanceCents: 0,
-      },
-    ])
-  }
-
-  return (
-    <div className="page home-page">
-      <div className="home-page__intro">
-        <h1 className="page-title">HSA Platform</h1>
-        <div className="home-page__actions">
-          <Button onClick={handleCreateAccount}>Create account</Button>
-          <Button onClick={() => navigate('/transactions')}>
-            Simulate transaction
-          </Button>
-        </div>
-      </div>
-
-      <div className="home-page__grid">
-        <Panel title="Accounts" className="home-page__accounts">
-          <AccountsTable accounts={accounts} />
-        </Panel>
-
-        <Panel title="Transactions" className="home-page__transactions">
-          <TransactionsTable transactions={recentTransactions} />
-        </Panel>
-      </div>
-    </div>
-  )
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [createOpen, setCreateOpen] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  useEffect(() => { void (async () => { try { const next = await api.accounts(); setAccounts(next); if (next[0]) setTransactions(await api.transactions(next[0].id)) } catch (err) { setError(err instanceof Error ? err.message : 'Unable to load accounts') } finally { setLoading(false) } })() }, [])
+  async function createAccount(holderName: string) { setError(''); try { const account = await api.createAccount(holderName); setCreateOpen(false); navigate(`/accounts/${account.id}`) } catch (err) { setError(err instanceof Error ? err.message : 'Unable to create account') } }
+  return <div className="page home-page"><div className="home-page__intro"><div><p className="eyebrow">Your health spending, clearly</p><h1 className="page-title">HSA Platform</h1><p className="page-subtitle">A calm, accountable view of every dollar.</p></div><Button onClick={() => setCreateOpen(true)}>Create account</Button></div>{error && <p className="field__error" role="alert">{error}</p>}{loading ? <p className="empty-state">Loading accounts…</p> : <div className="home-page__grid"><Panel title="Accounts" className="home-page__accounts"><AccountsTable accounts={accounts} /></Panel><Panel title="Recent activity" className="home-page__transactions"><TransactionsTable transactions={transactions.slice(0, 5)} /></Panel></div>}<CreateAccountModal open={createOpen} error={error} onClose={() => { setCreateOpen(false); setError('') }} onConfirm={createAccount} /></div>
 }

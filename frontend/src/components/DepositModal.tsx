@@ -25,9 +25,11 @@ export function DepositModal({
 
   useEffect(() => {
     if (!open) return
-    setAmount('')
-    setError('')
-    const frame = requestAnimationFrame(() => inputRef.current?.focus())
+    const frame = requestAnimationFrame(() => {
+      setAmount('')
+      setError('')
+      inputRef.current?.focus()
+    })
     return () => cancelAnimationFrame(frame)
   }, [open])
 

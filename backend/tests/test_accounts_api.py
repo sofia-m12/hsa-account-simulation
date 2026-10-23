@@ -183,10 +183,11 @@ def test_issue_card_returns_safe_fields_and_updates_account_lookup(client):
     body = response.json()
     assert body["id"]
     assert body["account_id"] == account["id"]
+    assert len(body["token"]) == 16
+    assert body["token"].isdigit()
     assert len(body["card_last4"]) == 4
     assert body["card_last4"].isdigit()
     assert body["issued_at"]
-    assert "token" not in body
 
     refreshed = client.get(f"/api/accounts/{account['id']}")
     assert refreshed.status_code == 200

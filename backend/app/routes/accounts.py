@@ -96,6 +96,7 @@ def _card_response(row) -> CardResponse:
     return CardResponse(
         id=values["id"],
         account_id=values["account_id"],
+        token=values["token"],
         card_last4=values["token"][-4:],
         issued_at=values["issued_at"],
     )
