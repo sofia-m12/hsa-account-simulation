@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { Transaction } from "../data/api";
 import {
   formatReason,
@@ -42,7 +43,18 @@ export function TransactionsTable({
               <td>{formatShortDate(tx.created_at)}</td>
               <td>{formatTime(tx.created_at)}</td>
               {accountNumberById && (
-                <td>{accountNumberById[tx.account_id] ?? "—"}</td>
+                <td>
+                  {accountNumberById[tx.account_id] ? (
+                    <Link
+                      className="table-link"
+                      to={`/accounts/${tx.account_id}`}
+                    >
+                      {accountNumberById[tx.account_id]}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
               )}
               <td>{tx.merchant || "Deposit"}</td>
               <td className="amount">{formatUsd(tx.amount_cents)}</td>

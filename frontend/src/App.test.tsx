@@ -121,6 +121,39 @@ describe("application routes", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("links transaction account numbers to their account pages", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/accounts") && !url.includes("/accounts/")) {
+        return jsonResponse([cardedAccount]);
+      }
+      if (url.includes("/transactions")) {
+        return jsonResponse([
+          {
+            id: "tx-1",
+            account_id: cardedAccount.id,
+            card_id: "card-1",
+            kind: "PURCHASE",
+            amount_cents: 2500,
+            merchant: "Clinic",
+            category: "medical",
+            outcome: "APPROVED",
+            decline_reason: null,
+            created_at: "2026-10-24T01:00:00Z",
+          },
+        ]);
+      }
+      return jsonResponse({ detail: `Unhandled ${url}` }, 500);
+    });
+    window.history.pushState({}, "", "/transactions");
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("link", { name: "1000000001" }),
+    ).toHaveAttribute("href", `/accounts/${cardedAccount.id}`);
+  });
+
   it("shows the not-found page when an account identifier is invalid", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ detail: "Invalid account identifier" }), {
