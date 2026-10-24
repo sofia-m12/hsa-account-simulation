@@ -20,7 +20,14 @@ export function HomePage() {
       try {
         const next = await api.accounts();
         setAccounts(next);
-        if (next[0]) setTransactions(await api.transactions(next[0].id));
+        const activity = await Promise.all(
+          next.map((account) => api.transactions(account.id)),
+        );
+        setTransactions(
+          activity
+            .flat()
+            .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+        );
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Unable to load accounts",
@@ -63,7 +70,10 @@ export function HomePage() {
             <AccountsTable accounts={accounts} />
           </Panel>
           <Panel title="Recent activity" className="home-page__transactions">
-            <TransactionsTable transactions={transactions.slice(0, 5)} />
+            <TransactionsTable
+              transactions={transactions.slice(0, 5)}
+              emptyMessage="No transactions yet."
+            />
           </Panel>
         </div>
       )}
