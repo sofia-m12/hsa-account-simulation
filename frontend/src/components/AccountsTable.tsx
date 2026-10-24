@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Account } from "../data/api";
-import { formatDate, formatUsd } from "../data/api";
+import { formatShortDate, formatUsd } from "../utils/formatters";
 
 type AccountsTableProps = {
   accounts: Account[];
@@ -36,7 +36,7 @@ export function AccountsTable({ accounts }: AccountsTableProps) {
               </td>
               <td>{account.holder_name}</td>
               <td>{formatUsd(account.balance_cents)}</td>
-              <td>{formatDate(account.created_at)}</td>
+              <td>{formatShortDate(account.created_at)}</td>
             </tr>
           ))}
         </tbody>

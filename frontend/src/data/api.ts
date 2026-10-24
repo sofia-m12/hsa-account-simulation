@@ -85,16 +85,3 @@ export const api = {
       { method: "POST", body: JSON.stringify(payload) },
     ),
 };
-
-export function formatUsd(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
-
-export function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
-}

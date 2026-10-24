@@ -81,19 +81,3 @@ export const mockTransactions: Transaction[] = [
     outcome: "Deposit",
   },
 ];
-
-export function formatUsd(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
-
-export function formatDate(iso: string): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(year, month - 1, day));
-}

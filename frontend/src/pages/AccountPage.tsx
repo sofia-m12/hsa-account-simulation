@@ -9,7 +9,8 @@ import {
   type PurchaseFormValues,
 } from "../components/PurchaseModal";
 import { TransactionsTable } from "../components/TransactionsTable";
-import { api, formatUsd, type Account, type Transaction } from "../data/api";
+import { api, type Account, type Transaction } from "../data/api";
+import { formatUsd } from "../utils/formatters";
 
 export function AccountPage() {
   const { accountId = "" } = useParams();

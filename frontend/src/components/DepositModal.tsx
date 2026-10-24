@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Check, X } from "lucide-react";
-import { formatUsd } from "../data/mock";
+import { formatUsd } from "../utils/formatters";
 import { Button } from "./Button";
 
 type DepositModalProps = {

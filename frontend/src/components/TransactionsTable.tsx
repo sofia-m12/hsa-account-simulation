@@ -1,36 +1,16 @@
 import type { Transaction } from "../data/api";
-import { formatUsd } from "../data/api";
+import {
+  formatReason,
+  formatShortDate,
+  formatTime,
+  formatUsd,
+} from "../utils/formatters";
 import { OutcomeBadge } from "./OutcomeBadge";
 
 type TransactionsTableProps = {
   transactions: Transaction[];
   emptyMessage?: string;
 };
-
-function formatReason(reason: string | null): string {
-  if (!reason) return "—";
-  return reason
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function formatTime(timestamp: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(timestamp));
-}
-
-function formatShortDate(timestamp: string): string {
-  const date = new Date(timestamp);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const year = String(date.getFullYear()).slice(-2);
-
-  return `${month}/${day}/${year}`;
-}
 
 export function TransactionsTable({
   transactions,
