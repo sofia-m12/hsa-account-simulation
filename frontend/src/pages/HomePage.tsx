@@ -72,6 +72,9 @@ export function HomePage() {
           <Panel title="Recent activity" className="home-page__transactions">
             <TransactionsTable
               transactions={transactions.slice(0, 5)}
+              accountNumberById={Object.fromEntries(
+                accounts.map((account) => [account.id, account.account_number]),
+              )}
               emptyMessage="No transactions yet."
             />
           </Panel>

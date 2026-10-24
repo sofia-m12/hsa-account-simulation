@@ -9,11 +9,13 @@ import { OutcomeBadge } from "./OutcomeBadge";
 
 type TransactionsTableProps = {
   transactions: Transaction[];
+  accountNumberById?: Record<string, number>;
   emptyMessage?: string;
 };
 
 export function TransactionsTable({
   transactions,
+  accountNumberById,
   emptyMessage = "No transactions yet.",
 }: TransactionsTableProps) {
   if (transactions.length === 0) {
@@ -27,6 +29,7 @@ export function TransactionsTable({
           <tr>
             <th scope="col">Date</th>
             <th scope="col">Time</th>
+            {accountNumberById && <th scope="col">Acct. #</th>}
             <th scope="col">Description</th>
             <th scope="col">Amount</th>
             <th scope="col">Outcome</th>
@@ -38,6 +41,9 @@ export function TransactionsTable({
             <tr key={tx.id}>
               <td>{formatShortDate(tx.created_at)}</td>
               <td>{formatTime(tx.created_at)}</td>
+              {accountNumberById && (
+                <td>{accountNumberById[tx.account_id] ?? "—"}</td>
+              )}
               <td>{tx.merchant || "Deposit"}</td>
               <td className="amount">{formatUsd(tx.amount_cents)}</td>
               <td>

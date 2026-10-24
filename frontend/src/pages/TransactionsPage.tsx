@@ -6,6 +6,9 @@ import { api, type Transaction } from "../data/api";
 
 export function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accountNumberById, setAccountNumberById] = useState<
+    Record<string, number>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -13,6 +16,11 @@ export function TransactionsPage() {
     void (async () => {
       try {
         const accounts = await api.accounts();
+        setAccountNumberById(
+          Object.fromEntries(
+            accounts.map((account) => [account.id, account.account_number]),
+          ),
+        );
         const activity = await Promise.all(
           accounts.map((account) => api.transactions(account.id)),
         );
@@ -47,6 +55,7 @@ export function TransactionsPage() {
         ) : (
           <TransactionsTable
             transactions={transactions}
+            accountNumberById={accountNumberById}
             emptyMessage="No transactions yet."
           />
         )}
