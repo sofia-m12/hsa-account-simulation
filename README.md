@@ -11,7 +11,8 @@ A local web app that simulates HSA accounts, deposits, virtual debit cards, and 
 
 - Python 3
 - Node.js and npm
-- Docker and Docker Compose (recommended)
+- Make
+- Docker with Docker Compose, or OrbStack on macOS (recommended)
 
 ## Run the full stack with Docker
 
@@ -136,3 +137,24 @@ Run the backend lint checks, or apply safe automatic fixes:
 ruff check backend
 ruff check backend --fix
 ```
+
+## Full-project quality checks
+
+After installing the backend requirements in an active virtual environment and
+the frontend dependencies with `npm ci --prefix frontend`, run all backend and
+frontend static checks plus the frontend production build from the repository
+root:
+
+```sh
+make check
+```
+
+To format both applications from the repository root:
+
+```sh
+make format
+```
+
+Automated tests remain separate from these commands. Run the backend tests
+against `hsa_test` using the command above and run frontend tests with
+`npm test --prefix frontend`.
