@@ -23,6 +23,7 @@ export function TransactionsPage() {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [cardToken, setCardToken] = useState("");
   const [cardLast4, setCardLast4] = useState<string | null>(null);
+  const [concurrentError, setConcurrentError] = useState("");
   const simulateFromNav = Boolean(
     (location.state as SimulateLocationState | null)?.simulate,
   );
@@ -58,6 +59,7 @@ export function TransactionsPage() {
     setSelectedAccount(null);
     setCardToken("");
     setCardLast4(null);
+    setConcurrentError("");
     if (simulateFromNav) {
       navigate(".", { replace: true, state: null });
     }
@@ -67,6 +69,7 @@ export function TransactionsPage() {
     setSelectedAccount(account);
     setCardToken("");
     setCardLast4(null);
+    setConcurrentError("");
     if (!account?.card_last4) return;
     try {
       const card = await api.issueCard(account.id);
@@ -94,6 +97,49 @@ export function TransactionsPage() {
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to process purchase",
+      );
+    }
+  }
+
+  async function submitConcurrentPurchases(
+    purchases: [PurchaseFormValues, PurchaseFormValues],
+  ) {
+    if (!selectedAccount || !cardToken) return;
+    setConcurrentError("");
+    setError("");
+    const requests = purchases.map((purchase) =>
+      api.purchase(selectedAccount.id, {
+        ...purchase,
+        card_token: cardToken,
+      }),
+    );
+    try {
+      await Promise.all(requests);
+    } catch (err) {
+      await Promise.allSettled(requests);
+      try {
+        const nextAccounts = await api.accounts();
+        setAccounts(nextAccounts);
+        await loadActivity(nextAccounts);
+      } catch {
+        // Keep the purchase error actionable even if the refresh also fails.
+      }
+      setConcurrentError(
+        err instanceof Error
+          ? err.message
+          : "Unable to process concurrent purchases",
+      );
+      return;
+    }
+
+    closeSimulator();
+    try {
+      const nextAccounts = await api.accounts();
+      setAccounts(nextAccounts);
+      await loadActivity(nextAccounts);
+    } catch {
+      setError(
+        "Purchases completed, but the latest activity could not be refreshed.",
       );
     }
   }
@@ -137,6 +183,8 @@ export function TransactionsPage() {
           void handleSelectAccount(account);
         }}
         onConfirm={submitPurchase}
+        onConfirmConcurrent={submitConcurrentPurchases}
+        concurrentError={concurrentError}
       />
     </div>
   );

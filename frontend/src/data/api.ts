@@ -28,11 +28,9 @@ export type Card = {
   card_last4: string;
   issued_at: string;
 };
+export const qualifiedCategories = ["Medical", "Dental", "Vision", "Pharmacy"];
 export const categories = [
-  "Medical",
-  "Dental",
-  "Vision",
-  "Pharmacy",
+  ...qualifiedCategories,
   "Travel",
   "Entertainment",
   "Other",

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 
@@ -20,7 +26,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function mockDashboardFetch() {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
     if (url.endsWith("/accounts") && !url.includes("/accounts/")) {
       return jsonResponse([cardedAccount]);
@@ -55,6 +61,31 @@ function mockDashboardFetch() {
       });
     }
     return jsonResponse({ detail: `Unhandled ${url}` }, 500);
+  });
+}
+
+async function prepareConcurrencyTest() {
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Simulate Transaction" }),
+  );
+  fireEvent.click(await screen.findByRole("button", { name: /Kelly H/i }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Concurrency test" }),
+    ).toBeEnabled(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Concurrency test" }));
+  fireEvent.change(screen.getByLabelText("Purchase A amount"), {
+    target: { value: "80.00" },
+  });
+  fireEvent.change(screen.getByLabelText("Purchase A merchant"), {
+    target: { value: "Clinic A" },
+  });
+  fireEvent.change(screen.getByLabelText("Purchase B amount"), {
+    target: { value: "50.00" },
+  });
+  fireEvent.change(screen.getByLabelText("Purchase B merchant"), {
+    target: { value: "Clinic B" },
   });
 }
 
@@ -198,6 +229,185 @@ describe("application routes", () => {
       ).not.toBeInTheDocument();
     });
     expect(screen.queryByText("Purchase approved.")).not.toBeInTheDocument();
+  });
+
+  it("starts both concurrent purchases before either resolves and refreshes activity", async () => {
+    const pendingPurchases: Array<(response: Response) => void> = [];
+    const purchaseBodies: unknown[] = [];
+    let accountLoads = 0;
+    let activityLoads = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/accounts") && !url.includes("/accounts/")) {
+        accountLoads += 1;
+        return Promise.resolve(jsonResponse([cardedAccount]));
+      }
+      if (url.includes("/transactions")) {
+        activityLoads += 1;
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.includes("/card")) {
+        return Promise.resolve(
+          jsonResponse({
+            id: "card-1",
+            account_id: cardedAccount.id,
+            token: "4111111111111234",
+            card_last4: "1234",
+            issued_at: "2026-10-24T00:00:00Z",
+          }),
+        );
+      }
+      if (url.includes("/purchases")) {
+        purchaseBodies.push(JSON.parse(String(init?.body)));
+        return new Promise<Response>((resolve) =>
+          pendingPurchases.push(resolve),
+        );
+      }
+      return Promise.resolve(jsonResponse({ detail: `Unhandled ${url}` }, 500));
+    });
+    window.history.pushState({}, "", "/transactions");
+    render(<App />);
+
+    await prepareConcurrencyTest();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Execute both concurrently" }),
+    );
+
+    await waitFor(() => expect(pendingPurchases).toHaveLength(2));
+    expect(purchaseBodies).toEqual([
+      {
+        amount: "80.00",
+        merchant: "Clinic A",
+        category: "Medical",
+        card_token: "4111111111111234",
+      },
+      {
+        amount: "50.00",
+        merchant: "Clinic B",
+        category: "Medical",
+        card_token: "4111111111111234",
+      },
+    ]);
+
+    pendingPurchases[0](jsonResponse({}));
+    pendingPurchases[1](jsonResponse({}));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Simulate Transaction" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(accountLoads).toBe(2);
+    expect(activityLoads).toBe(2);
+  });
+
+  it("keeps the concurrency form open and retryable after an API failure", async () => {
+    let purchaseCount = 0;
+    let resolveSecondPurchase: ((response: Response) => void) | undefined;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/accounts") && !url.includes("/accounts/")) {
+        return Promise.resolve(jsonResponse([cardedAccount]));
+      }
+      if (url.includes("/transactions")) {
+        return Promise.resolve(jsonResponse([]));
+      }
+      if (url.includes("/card")) {
+        return Promise.resolve(
+          jsonResponse({
+            id: "card-1",
+            account_id: cardedAccount.id,
+            token: "4111111111111234",
+            card_last4: "1234",
+            issued_at: "2026-10-24T00:00:00Z",
+          }),
+        );
+      }
+      if (url.includes("/purchases")) {
+        purchaseCount += 1;
+        if (purchaseCount === 1) {
+          return Promise.resolve(
+            jsonResponse(
+              { detail: "Unable to process concurrent purchases" },
+              500,
+            ),
+          );
+        }
+        return new Promise<Response>((resolve) => {
+          resolveSecondPurchase = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse({ detail: `Unhandled ${url}` }, 500));
+    });
+    window.history.pushState({}, "", "/transactions");
+    render(<App />);
+
+    await prepareConcurrencyTest();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Execute both concurrently" }),
+    );
+
+    await waitFor(() => expect(purchaseCount).toBe(2));
+    expect(screen.getByRole("button", { name: "Executing…" })).toBeDisabled();
+    expect(
+      screen.queryByText("Unable to process concurrent purchases"),
+    ).not.toBeInTheDocument();
+
+    resolveSecondPurchase?.(jsonResponse({}));
+
+    const dialog = screen.getByRole("dialog", { name: "Simulate Transaction" });
+    expect(
+      await within(dialog).findByText("Unable to process concurrent purchases"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Execute both concurrently" }),
+    ).toBeEnabled();
+  });
+
+  it("reports a refresh failure without presenting completed purchases as retryable", async () => {
+    let accountLoads = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/accounts") && !url.includes("/accounts/")) {
+        accountLoads += 1;
+        return Promise.resolve(
+          accountLoads === 1
+            ? jsonResponse([cardedAccount])
+            : jsonResponse({ detail: "Refresh unavailable" }, 500),
+        );
+      }
+      if (url.includes("/transactions"))
+        return Promise.resolve(jsonResponse([]));
+      if (url.includes("/card")) {
+        return Promise.resolve(
+          jsonResponse({
+            id: "card-1",
+            account_id: cardedAccount.id,
+            token: "4111111111111234",
+            card_last4: "1234",
+            issued_at: "2026-10-24T00:00:00Z",
+          }),
+        );
+      }
+      if (url.includes("/purchases")) return Promise.resolve(jsonResponse({}));
+      return Promise.resolve(jsonResponse({ detail: `Unhandled ${url}` }, 500));
+    });
+    window.history.pushState({}, "", "/transactions");
+    render(<App />);
+
+    await prepareConcurrencyTest();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Execute both concurrently" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Purchases completed, but the latest activity could not be refreshed.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Simulate Transaction" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps unrelated account-page API failures in the page error state", async () => {

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { X } from "lucide-react";
-import type { Account } from "../data/api";
+import { Check, X } from "lucide-react";
+import { categories, type Account } from "../data/api";
 import { filterAccountsForSimulator } from "../utils/filterAccountsForSimulator";
 import { formatUsd } from "../utils/formatters";
 import { Button } from "./Button";
@@ -15,7 +15,169 @@ type SimulateTransactionModalProps = {
   onClose: () => void;
   onSelectAccount: (account: Account | null) => void;
   onConfirm: (purchase: PurchaseFormValues) => Promise<void>;
+  onConfirmConcurrent: (
+    purchases: [PurchaseFormValues, PurchaseFormValues],
+  ) => Promise<void>;
+  concurrentError: string;
 };
+
+const emptyPurchase: PurchaseFormValues = {
+  amount: "",
+  merchant: "",
+  category: categories[0],
+};
+
+function parseCents(value: string) {
+  if (!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(value)) return null;
+  const [dollars, fraction = ""] = value.split(".");
+  const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
+  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+}
+
+function ConcurrentPurchaseForm({
+  balanceCents,
+  cardAvailable,
+  onCancel,
+  onConfirm,
+  error,
+}: {
+  balanceCents: number;
+  cardAvailable: boolean;
+  onCancel: () => void;
+  onConfirm: (
+    purchases: [PurchaseFormValues, PurchaseFormValues],
+  ) => Promise<void>;
+  error: string;
+}) {
+  const [purchases, setPurchases] = useState<
+    [PurchaseFormValues, PurchaseFormValues]
+  >([{ ...emptyPurchase }, { ...emptyPurchase }]);
+  const [submitting, setSubmitting] = useState(false);
+  const cents = purchases.map((purchase) => parseCents(purchase.amount));
+  const invalidAmountEntered = purchases.some(
+    (purchase, index) => purchase.amount !== "" && cents[index] === null,
+  );
+  const validAmounts = cents.every((amount) => amount !== null);
+  const individuallyAffordable = cents.every(
+    (amount) => amount !== null && amount <= balanceCents,
+  );
+  const merchantsPresent = purchases.every(
+    (purchase) => purchase.merchant.trim().length > 0,
+  );
+  const canSubmit =
+    cardAvailable &&
+    validAmounts &&
+    individuallyAffordable &&
+    merchantsPresent &&
+    !submitting;
+
+  function updatePurchase(
+    index: number,
+    field: keyof PurchaseFormValues,
+    value: string,
+  ) {
+    setPurchases((current) => {
+      const next: [PurchaseFormValues, PurchaseFormValues] = [
+        { ...current[0] },
+        { ...current[1] },
+      ];
+      next[index][field] = value;
+      return next;
+    });
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setSubmitting(true);
+    try {
+      await onConfirm(purchases);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form
+      className="modal__form"
+      onSubmit={(event) => void handleSubmit(event)}
+    >
+      <p className="field__hint">
+        Each purchase must be affordable on its own. Complete both merchants and
+        enter positive amounts with no more than two decimal places.
+      </p>
+      {purchases.map((purchase, index) => {
+        const label = index === 0 ? "Purchase A" : "Purchase B";
+        return (
+          <fieldset className="concurrent-purchase" key={label}>
+            <legend>{label}</legend>
+            <label className="field">
+              <span className="field__label">{label} amount</span>
+              <input
+                className="field__input"
+                value={purchase.amount}
+                onChange={(event) =>
+                  updatePurchase(index, "amount", event.target.value)
+                }
+                placeholder="0.00"
+                required
+              />
+            </label>
+            <label className="field">
+              <span className="field__label">{label} merchant</span>
+              <input
+                className="field__input"
+                value={purchase.merchant}
+                onChange={(event) =>
+                  updatePurchase(index, "merchant", event.target.value)
+                }
+                placeholder="Merchant name"
+                required
+              />
+            </label>
+            <label className="field">
+              <span className="field__label">{label} category</span>
+              <select
+                className="field__input"
+                value={purchase.category}
+                onChange={(event) =>
+                  updatePurchase(index, "category", event.target.value)
+                }
+              >
+                {categories.map((category) => (
+                  <option key={category}>{category}</option>
+                ))}
+              </select>
+            </label>
+          </fieldset>
+        );
+      })}
+      {invalidAmountEntered && (
+        <p className="field__error" role="alert">
+          Enter positive dollar amounts with no more than two decimal places.
+        </p>
+      )}
+      {validAmounts && !individuallyAffordable && (
+        <p className="field__error" role="alert">
+          Each purchase must be no more than the current balance.
+        </p>
+      )}
+      {error && (
+        <p className="field__error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="modal__actions">
+        <Button type="button" variant="secondary" icon={X} onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" icon={Check} disabled={!canSubmit}>
+          {submitting ? "Executing…" : "Execute both concurrently"}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export function SimulateTransactionModal({
   open,
@@ -25,15 +187,19 @@ export function SimulateTransactionModal({
   onClose,
   onSelectAccount,
   onConfirm,
+  onConfirmConcurrent,
+  concurrentError,
 }: SimulateTransactionModalProps) {
   const titleId = useId();
   const listId = useId();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [concurrentMode, setConcurrentMode] = useState(false);
 
   const closeModal = useCallback(() => {
     setQuery("");
     setSelectedId(null);
+    setConcurrentMode(false);
     onSelectAccount(null);
     onClose();
   }, [onClose, onSelectAccount]);
@@ -60,13 +226,14 @@ export function SimulateTransactionModal({
 
   function clearSelection() {
     setSelectedId(null);
+    setConcurrentMode(false);
     onSelectAccount(null);
   }
 
   return (
     <div className="modal-backdrop" role="presentation" onClick={closeModal}>
       <div
-        className="modal"
+        className="modal modal--simulator"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -77,7 +244,7 @@ export function SimulateTransactionModal({
             Simulate Transaction
           </h2>
         </header>
-        <div className="modal__form">
+        <div className="modal__form modal__scroll-area">
           {accounts.length === 0 ? (
             <p className="field__hint">
               No accounts yet.{" "}
@@ -91,9 +258,12 @@ export function SimulateTransactionModal({
               <span className="account-match__name">
                 {selected.holder_name}
               </span>
-              <span className="account-match__number">
+              <Link
+                className="inline-link account-match__number"
+                to={`/accounts/${selected.id}`}
+              >
                 Acct. # {selected.account_number}
-              </span>
+              </Link>
               <span className="account-match__balance">
                 {formatUsd(selected.balance_cents)}
               </span>
@@ -125,26 +295,44 @@ export function SimulateTransactionModal({
                 <ul
                   id={listId}
                   className="account-match-list"
-                  role="listbox"
                   aria-label="Matching accounts"
                 >
                   {matches.map((account) => (
-                    <li key={account.id} role="option" aria-selected={false}>
-                      <button
-                        type="button"
+                    <li key={account.id}>
+                      <div
                         className="account-match"
-                        onClick={() => selectAccount(account)}
+                        onClick={(event) => {
+                          if (
+                            event.target instanceof Element &&
+                            event.target.closest("a")
+                          ) {
+                            return;
+                          }
+                          selectAccount(account);
+                        }}
                       >
-                        <span className="account-match__name">
-                          {account.holder_name}
-                        </span>
-                        <span className="account-match__number">
+                        <button
+                          type="button"
+                          className="account-match__select"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            selectAccount(account);
+                          }}
+                        >
+                          <span className="account-match__name">
+                            {account.holder_name}
+                          </span>
+                        </button>
+                        <Link
+                          className="inline-link account-match__number"
+                          to={`/accounts/${account.id}`}
+                        >
                           Acct. # {account.account_number}
-                        </span>
+                        </Link>
                         <span className="account-match__balance">
                           {formatUsd(account.balance_cents)}
                         </span>
-                      </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -160,12 +348,42 @@ export function SimulateTransactionModal({
             </p>
           )}
           {selected?.card_last4 ? (
-            <PurchaseForm
-              cardLast4={cardLast4 ?? selected.card_last4}
-              cardAvailable={cardAvailable}
-              onConfirm={onConfirm}
-              onCancel={closeModal}
-            />
+            <>
+              <div className="simulator-mode" aria-label="Simulation mode">
+                <Button
+                  type="button"
+                  variant={concurrentMode ? "secondary" : "primary"}
+                  aria-pressed={!concurrentMode}
+                  onClick={() => setConcurrentMode(false)}
+                >
+                  Single purchase
+                </Button>
+                <Button
+                  type="button"
+                  variant={concurrentMode ? "primary" : "secondary"}
+                  aria-pressed={concurrentMode}
+                  onClick={() => setConcurrentMode(true)}
+                >
+                  Concurrency test
+                </Button>
+              </div>
+              {concurrentMode ? (
+                <ConcurrentPurchaseForm
+                  balanceCents={selected.balance_cents}
+                  cardAvailable={cardAvailable}
+                  onConfirm={onConfirmConcurrent}
+                  onCancel={closeModal}
+                  error={concurrentError}
+                />
+              ) : (
+                <PurchaseForm
+                  cardLast4={cardLast4 ?? selected.card_last4}
+                  cardAvailable={cardAvailable}
+                  onConfirm={onConfirm}
+                  onCancel={closeModal}
+                />
+              )}
+            </>
           ) : (
             <div className="modal__actions">
               <Button

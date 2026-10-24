@@ -38,6 +38,8 @@ function renderModal(
         onClose={vi.fn()}
         onSelectAccount={vi.fn()}
         onConfirm={vi.fn()}
+        onConfirmConcurrent={vi.fn()}
+        concurrentError=""
         {...props}
       />
     </MemoryRouter>,
@@ -57,6 +59,9 @@ describe("SimulateTransactionModal", () => {
     expect(screen.getByText("$100.00")).toBeInTheDocument();
     expect(screen.getByText("Kelly Nguyen")).toBeInTheDocument();
     expect(screen.getByText("Acct. # 1000000004")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Acct. # 1000000001" }),
+    ).toHaveAttribute("href", "/accounts/a1");
     expect(screen.getByText("$50.00")).toBeInTheDocument();
     expect(screen.queryByText(/••••|1234/)).not.toBeInTheDocument();
   });
@@ -93,7 +98,7 @@ describe("SimulateTransactionModal", () => {
     fireEvent.change(screen.getByLabelText("Find account"), {
       target: { value: "kelly" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Kelly H/i }));
+    fireEvent.click(screen.getByText("$100.00"));
 
     expect(screen.queryByLabelText("Find account")).not.toBeInTheDocument();
     expect(screen.queryByText("Kelly Nguyen")).not.toBeInTheDocument();
@@ -121,6 +126,67 @@ describe("SimulateTransactionModal", () => {
     expect(screen.getByLabelText("Category")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Make purchase" })).toBeEnabled();
     expect(screen.queryByText(/••••/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Acct. # 1000000001" }),
+    ).toHaveAttribute("href", "/accounts/a1");
+  });
+
+  it("enables concurrent purchases even when their combined amount is within the balance", () => {
+    renderModal({ cardLast4: "1234", cardAvailable: true });
+
+    fireEvent.click(screen.getByRole("button", { name: /Kelly H/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Concurrency test" }));
+
+    expect(screen.getAllByLabelText(/merchant/i)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/category/i)).toHaveLength(2);
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual([
+      "Medical",
+      "Dental",
+      "Vision",
+      "Pharmacy",
+      "Travel",
+      "Entertainment",
+      "Other",
+      "Medical",
+      "Dental",
+      "Vision",
+      "Pharmacy",
+      "Travel",
+      "Entertainment",
+      "Other",
+    ]);
+
+    fireEvent.change(screen.getByLabelText("Purchase A amount"), {
+      target: { value: "60.00" },
+    });
+    fireEvent.change(screen.getByLabelText("Purchase B amount"), {
+      target: { value: "30.00" },
+    });
+    fireEvent.change(screen.getByLabelText("Purchase A merchant"), {
+      target: { value: "Clinic A" },
+    });
+    fireEvent.change(screen.getByLabelText("Purchase B merchant"), {
+      target: { value: "Clinic B" },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Execute both concurrently" }),
+    ).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Purchase A amount"), {
+      target: { value: "10.001" },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /no more than two decimal places/i,
+    );
+
+    fireEvent.change(screen.getByLabelText("Purchase A amount"), {
+      target: { value: "60.00" },
+    });
+    expect(
+      screen.getByRole("button", { name: "Execute both concurrently" }),
+    ).toBeEnabled();
   });
 
   it("prompts the reviewer to create an account when none exist", () => {
