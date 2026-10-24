@@ -5,3 +5,4 @@ sqlalchemy
 psycopg[binary]
 pytest
 httpx
+ruff==0.17.2

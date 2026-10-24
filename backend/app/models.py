@@ -1,4 +1,15 @@
-from sqlalchemy import MetaData, Table, Column, BigInteger, DateTime, Integer, String, Text, UUID, text
+from sqlalchemy import (
+    UUID,
+    BigInteger,
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    text,
+)
 
 metadata = MetaData()
 

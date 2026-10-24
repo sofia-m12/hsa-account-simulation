@@ -113,3 +113,26 @@ npm run format:check
 npm run lint
 npm run build
 ```
+
+### Backend formatting and linting
+
+Ruff formats and checks the backend application and tests. It is installed with
+the backend dependencies from the repository root:
+
+```sh
+python -m pip install -r backend/requirements.txt
+```
+
+Rewrite backend Python files, or check formatting without changing them:
+
+```sh
+ruff format backend
+ruff format --check backend
+```
+
+Run the backend lint checks, or apply safe automatic fixes:
+
+```sh
+ruff check backend
+ruff check backend --fix
+```

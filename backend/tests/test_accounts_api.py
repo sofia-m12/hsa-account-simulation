@@ -5,12 +5,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-os.environ.setdefault(
-    "DATABASE_URL", "postgresql+psycopg://hsa:hsa@localhost:5432/hsa"
-)
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://hsa:hsa@localhost:5432/hsa_test")
 
-from app.database import engine  # noqa: E402
-from app.main import app  # noqa: E402
+from app.database import engine
+from app.main import app
 
 
 @pytest.fixture(autouse=True)
@@ -68,9 +66,7 @@ def test_account_persists_after_a_new_request(client):
 def test_deposit_increments_balance_and_records_activity(client):
     account = client.post("/api/accounts", json={"holder_name": "Depositor"}).json()
 
-    response = client.post(
-        f"/api/accounts/{account['id']}/deposits", json={"amount": "25.50"}
-    )
+    response = client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "25.50"})
 
     assert response.status_code == 201
     body = response.json()
@@ -89,9 +85,7 @@ def test_deposit_increments_balance_and_records_activity(client):
 def test_deposit_rejects_invalid_amounts(client, amount):
     account = client.post("/api/accounts", json={"holder_name": "Depositor"}).json()
 
-    response = client.post(
-        f"/api/accounts/{account['id']}/deposits", json={"amount": amount}
-    )
+    response = client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": amount})
 
     assert response.status_code == 422
 
@@ -110,11 +104,21 @@ def test_activity_history_exposes_deposit_and_purchase_decisions_in_newest_order
     deposit = client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "100.00"})
     approved = client.post(
         f"/api/accounts/{account['id']}/purchases",
-        json={"card_token": token, "amount": "25.00", "merchant": "Dental Office", "category": "dental"},
+        json={
+            "card_token": token,
+            "amount": "25.00",
+            "merchant": "Dental Office",
+            "category": "dental",
+        },
     )
     declined = client.post(
         f"/api/accounts/{account['id']}/purchases",
-        json={"card_token": token, "amount": "10.00", "merchant": "Travel Store", "category": "travel"},
+        json={
+            "card_token": token,
+            "amount": "10.00",
+            "merchant": "Travel Store",
+            "category": "travel",
+        },
     )
 
     response = client.get(f"/api/accounts/{account['id']}/transactions")
@@ -163,14 +167,14 @@ def test_deposit_rolls_back_balance_when_activity_insert_fails(client):
             )
         )
     try:
-        response = client.post(
-            f"/api/accounts/{account['id']}/deposits", json={"amount": "10.00"}
-        )
+        response = client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "10.00"})
         assert response.status_code == 500
         assert client.get(f"/api/accounts/{account['id']}").json()["balance_cents"] == 0
     finally:
         with engine.begin() as connection:
-            connection.execute(text("DROP TRIGGER IF EXISTS reject_deposit_activity_trigger ON transactions"))
+            connection.execute(
+                text("DROP TRIGGER IF EXISTS reject_deposit_activity_trigger ON transactions")
+            )
             connection.execute(text("DROP FUNCTION IF EXISTS reject_deposit_activity()"))
 
 
@@ -206,9 +210,7 @@ def test_issue_card_is_idempotent_for_repeated_requests(client):
 
 
 def test_issue_card_returns_404_for_unknown_account(client):
-    response = client.post(
-        "/api/accounts/00000000-0000-0000-0000-000000000099/card"
-    )
+    response = client.post("/api/accounts/00000000-0000-0000-0000-000000000099/card")
 
     assert response.status_code == 404
 
@@ -270,7 +272,12 @@ def test_purchase_rejects_invalid_card(client):
     _issue_card_token(client, account["id"])
     response = client.post(
         f"/api/accounts/{account['id']}/purchases",
-        json={"card_token": "0" * 16, "amount": "1.00", "merchant": "Clinic", "category": "medical"},
+        json={
+            "card_token": "0" * 16,
+            "amount": "1.00",
+            "merchant": "Clinic",
+            "category": "medical",
+        },
     )
     assert response.status_code == 201
     assert response.json()["transaction"]["decline_reason"] == "INVALID_CARD"
@@ -285,14 +292,21 @@ def test_concurrent_purchases_approve_exactly_one(client):
         with TestClient(app, raise_server_exceptions=False) as concurrent_client:
             return concurrent_client.post(
                 f"/api/accounts/{account['id']}/purchases",
-                json={"card_token": token, "amount": amount, "merchant": "Clinic", "category": "medical"},
+                json={
+                    "card_token": token,
+                    "amount": amount,
+                    "merchant": "Clinic",
+                    "category": "medical",
+                },
             )
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         responses = list(pool.map(purchase, ["80.00", "50.00"]))
 
     assert [response.status_code for response in responses] == [201, 201]
-    assert sum(response.json()["transaction"]["outcome"] == "APPROVED" for response in responses) == 1
+    assert (
+        sum(response.json()["transaction"]["outcome"] == "APPROVED" for response in responses) == 1
+    )
     assert client.get(f"/api/accounts/{account['id']}").json()["balance_cents"] in {2000, 5000}
 
 
@@ -301,7 +315,8 @@ def test_purchase_rolls_back_debit_when_activity_insert_fails(client):
     token = _issue_card_token(client, account["id"])
     client.post(f"/api/accounts/{account['id']}/deposits", json={"amount": "25.00"})
     with engine.begin() as connection:
-        connection.execute(text("""
+        connection.execute(
+            text("""
             CREATE OR REPLACE FUNCTION reject_purchase_activity() RETURNS trigger AS $$
             BEGIN
                 IF NEW.kind = 'PURCHASE' THEN RAISE EXCEPTION 'forced purchase failure'; END IF;
@@ -311,15 +326,23 @@ def test_purchase_rolls_back_debit_when_activity_insert_fails(client):
             CREATE TRIGGER reject_purchase_activity_trigger
             BEFORE INSERT ON transactions
             FOR EACH ROW EXECUTE FUNCTION reject_purchase_activity();
-        """))
+        """)
+        )
     try:
         response = client.post(
             f"/api/accounts/{account['id']}/purchases",
-            json={"card_token": token, "amount": "10.00", "merchant": "Clinic", "category": "medical"},
+            json={
+                "card_token": token,
+                "amount": "10.00",
+                "merchant": "Clinic",
+                "category": "medical",
+            },
         )
         assert response.status_code == 500
         assert client.get(f"/api/accounts/{account['id']}").json()["balance_cents"] == 2500
     finally:
         with engine.begin() as connection:
-            connection.execute(text("DROP TRIGGER IF EXISTS reject_purchase_activity_trigger ON transactions"))
+            connection.execute(
+                text("DROP TRIGGER IF EXISTS reject_purchase_activity_trigger ON transactions")
+            )
             connection.execute(text("DROP FUNCTION IF EXISTS reject_purchase_activity()"))

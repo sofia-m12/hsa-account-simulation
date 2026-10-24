@@ -1,7 +1,7 @@
+import secrets
+from decimal import Decimal
 from uuid import UUID
 
-from decimal import Decimal
-import secrets
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import insert, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -35,18 +35,15 @@ router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
 
 def _account_query():
-    return (
-        select(
-            accounts.c.id,
-            accounts.c.account_number,
-            accounts.c.holder_name,
-            accounts.c.currency,
-            accounts.c.balance_cents,
-            accounts.c.created_at,
-            cards.c.token.label("card_token"),
-        )
-        .select_from(accounts.outerjoin(cards, accounts.c.id == cards.c.account_id))
-    )
+    return select(
+        accounts.c.id,
+        accounts.c.account_number,
+        accounts.c.holder_name,
+        accounts.c.currency,
+        accounts.c.balance_cents,
+        accounts.c.created_at,
+        cards.c.token.label("card_token"),
+    ).select_from(accounts.outerjoin(cards, accounts.c.id == cards.c.account_id))
 
 
 def _to_response(row) -> AccountResponse:
@@ -130,14 +127,22 @@ def issue_card(account_id: UUID, response: Response, db: Session = Depends(get_d
         if existing is not None:
             response.status_code = status.HTTP_200_OK
             return _card_response(existing)
-        raise HTTPException(status_code=500, detail="Internal server error while issuing card")
+        raise HTTPException(
+            status_code=500, detail="Internal server error while issuing card"
+        ) from None
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Internal server error while issuing card")
+        raise HTTPException(
+            status_code=500, detail="Internal server error while issuing card"
+        ) from None
 
 
-@router.post("/{account_id}/deposits", response_model=DepositResponse, status_code=status.HTTP_201_CREATED)
-def create_deposit(account_id: UUID, payload: DepositCreate, db: Session = Depends(get_db)) -> DepositResponse:
+@router.post(
+    "/{account_id}/deposits", response_model=DepositResponse, status_code=status.HTTP_201_CREATED
+)
+def create_deposit(
+    account_id: UUID, payload: DepositCreate, db: Session = Depends(get_db)
+) -> DepositResponse:
     amount_cents = int(Decimal(payload.amount) * 100)
     try:
         account = db.execute(
@@ -150,19 +155,23 @@ def create_deposit(account_id: UUID, payload: DepositCreate, db: Session = Depen
             db.rollback()
             raise HTTPException(status_code=404, detail="Account not found")
         activity = db.execute(
-            insert(transactions).values(
+            insert(transactions)
+            .values(
                 account_id=account_id,
                 kind="DEPOSIT",
                 amount_cents=amount_cents,
                 outcome="APPROVED",
-            ).returning(transactions.c.id)
+            )
+            .returning(transactions.c.id)
         ).scalar_one()
         db.commit()
     except HTTPException:
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Internal server error while processing deposit")
+        raise HTTPException(
+            status_code=500, detail="Internal server error while processing deposit"
+        ) from None
     return DepositResponse(
         account=_to_response(db.execute(_account_query().where(accounts.c.id == account_id)).one()),
         transaction_id=activity,
@@ -175,15 +184,19 @@ def list_transactions(account_id: UUID, db: Session = Depends(get_db)) -> list[T
     if db.execute(select(accounts.c.id).where(accounts.c.id == account_id)).first() is None:
         raise HTTPException(status_code=404, detail="Account not found")
     rows = db.execute(
-        select(transactions).where(transactions.c.account_id == account_id).order_by(
-            transactions.c.created_at.desc(), transactions.c.id.desc()
-        )
+        select(transactions)
+        .where(transactions.c.account_id == account_id)
+        .order_by(transactions.c.created_at.desc(), transactions.c.id.desc())
     ).all()
     return [TransactionResponse(**row._mapping) for row in rows]
 
 
-@router.post("/{account_id}/purchases", response_model=PurchaseResponse, status_code=status.HTTP_201_CREATED)
-def create_purchase(account_id: UUID, payload: PurchaseCreate, db: Session = Depends(get_db)) -> PurchaseResponse:
+@router.post(
+    "/{account_id}/purchases", response_model=PurchaseResponse, status_code=status.HTTP_201_CREATED
+)
+def create_purchase(
+    account_id: UUID, payload: PurchaseCreate, db: Session = Depends(get_db)
+) -> PurchaseResponse:
     amount_cents = int(Decimal(payload.amount) * 100)
     try:
         account = db.execute(
@@ -198,7 +211,10 @@ def create_purchase(account_id: UUID, payload: PurchaseCreate, db: Session = Dep
         normalized_category = payload.category.lower()
         if card_values["token"] != payload.card_token:
             outcome, reason = "DECLINED", "INVALID_CARD"
-        elif normalized_category not in PURCHASE_CATEGORIES or normalized_category not in QUALIFIED_CATEGORIES:
+        elif (
+            normalized_category not in PURCHASE_CATEGORIES
+            or normalized_category not in QUALIFIED_CATEGORIES
+        ):
             outcome, reason = "DECLINED", "UNQUALIFIED_EXPENSE"
         elif account._mapping["balance_cents"] < amount_cents:
             outcome, reason = "DECLINED", "INSUFFICIENT_FUNDS"
@@ -210,7 +226,8 @@ def create_purchase(account_id: UUID, payload: PurchaseCreate, db: Session = Dep
                 .values(balance_cents=accounts.c.balance_cents - amount_cents)
             )
         transaction = db.execute(
-            insert(transactions).values(
+            insert(transactions)
+            .values(
                 account_id=account_id,
                 card_id=card_values["id"],
                 kind="PURCHASE",
@@ -219,7 +236,8 @@ def create_purchase(account_id: UUID, payload: PurchaseCreate, db: Session = Dep
                 category=payload.category,
                 outcome=outcome,
                 decline_reason=reason,
-            ).returning(transactions)
+            )
+            .returning(transactions)
         ).first()
         db.commit()
     except HTTPException:
@@ -227,6 +245,10 @@ def create_purchase(account_id: UUID, payload: PurchaseCreate, db: Session = Dep
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="Internal server error while processing purchase")
+        raise HTTPException(
+            status_code=500, detail="Internal server error while processing purchase"
+        ) from None
     refreshed = db.execute(_account_query().where(accounts.c.id == account_id)).one()
-    return PurchaseResponse(account=_to_response(refreshed), transaction=TransactionResponse(**transaction._mapping))
+    return PurchaseResponse(
+        account=_to_response(refreshed), transaction=TransactionResponse(**transaction._mapping)
+    )

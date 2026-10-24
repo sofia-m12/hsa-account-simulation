@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -40,7 +40,7 @@ class DepositCreate(BaseModel):
         try:
             amount = Decimal(value)
         except (InvalidOperation, ValueError):
-            raise ValueError("amount must be a valid dollar amount")
+            raise ValueError("amount must be a valid dollar amount") from None
         if not amount.is_finite() or amount <= 0 or amount > Decimal("10000.00"):
             raise ValueError("amount must be greater than 0 and no more than 10000.00")
         if amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) != amount:
