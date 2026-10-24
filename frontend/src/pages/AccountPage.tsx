@@ -1,16 +1,15 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { CircleDollarSign, CreditCard, ShoppingBag } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { DepositModal } from "../components/DepositModal";
 import { Panel } from "../components/Panel";
-import { TransactionsTable } from "../components/TransactionsTable";
 import {
-  api,
-  categories,
-  formatUsd,
-  type Account,
-  type Transaction,
-} from "../data/api";
+  PurchaseModal,
+  type PurchaseFormValues,
+} from "../components/PurchaseModal";
+import { TransactionsTable } from "../components/TransactionsTable";
+import { api, formatUsd, type Account, type Transaction } from "../data/api";
 
 export function AccountPage() {
   const { accountId = "" } = useParams();
@@ -19,11 +18,6 @@ export function AccountPage() {
   const [depositOpen, setDepositOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [cardToken, setCardToken] = useState("");
-  const [purchase, setPurchase] = useState({
-    amount: "",
-    merchant: "",
-    category: categories[0],
-  });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   async function load() {
@@ -90,8 +84,7 @@ export function AccountPage() {
       setError(err instanceof Error ? err.message : "Unable to deposit funds");
     }
   }
-  async function submitPurchase(event: FormEvent) {
-    event.preventDefault();
+  async function submitPurchase(purchase: PurchaseFormValues) {
     setMessage("");
     setError("");
     try {
@@ -116,7 +109,7 @@ export function AccountPage() {
   return (
     <div className="page account-page">
       <Link className="back-link" to="/">
-        Back to accounts
+        Back to Home
       </Link>
       {error && (
         <p className="field__error" role="alert">
@@ -158,33 +151,34 @@ export function AccountPage() {
         <aside className="account-page__actions">
           <Button
             className="account-action"
+            icon={CircleDollarSign}
             onClick={() => setDepositOpen(true)}
           >
-            Deposit funds
+            Deposit Funds
           </Button>
           <div className="account-action-row">
             {!account.card_last4 && (
               <Button
                 className="account-action"
-                variant="secondary"
+                icon={CreditCard}
                 onClick={issueCard}
               >
-                Issue simulated card
+                Issue Simulated Card
               </Button>
             )}
             <Button
               className="account-action"
-              variant="secondary"
+              icon={ShoppingBag}
               onClick={() => setPurchaseOpen(true)}
             >
-              Make a purchase
+              Make A Purchase
             </Button>
           </div>
         </aside>
         <Panel className="account-page__activity" title="Activity">
           <TransactionsTable
             transactions={transactions}
-            emptyMessage="No activity yet. Deposit funds to get started."
+            emptyMessage="No activity yet. Deposit Funds to get started."
           />
         </Panel>
       </div>
@@ -195,84 +189,13 @@ export function AccountPage() {
         onClose={() => setDepositOpen(false)}
         onConfirm={(cents) => void deposit((cents / 100).toFixed(2))}
       />
-      {purchaseOpen && (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onClick={() => setPurchaseOpen(false)}
-        >
-          <div
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="purchase-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="modal__header">
-              <h2 id="purchase-title" className="modal__title">
-                Make a purchase
-              </h2>
-            </header>
-            <form className="modal__form" onSubmit={submitPurchase}>
-              <p className="field__hint">
-                {account.card_last4
-                  ? "Your issued card is ready."
-                  : "Issue a simulated card before making a purchase."}
-              </p>
-              <label className="field">
-                <span className="field__label">Amount</span>
-                <input
-                  className="field__input"
-                  value={purchase.amount}
-                  onChange={(e) =>
-                    setPurchase({ ...purchase, amount: e.target.value })
-                  }
-                  placeholder="0.00"
-                  required
-                />
-              </label>
-              <label className="field">
-                <span className="field__label">Merchant</span>
-                <input
-                  className="field__input"
-                  value={purchase.merchant}
-                  onChange={(e) =>
-                    setPurchase({ ...purchase, merchant: e.target.value })
-                  }
-                  placeholder="Merchant name"
-                  required
-                />
-              </label>
-              <label className="field">
-                <span className="field__label">Category</span>
-                <select
-                  className="field__input"
-                  value={purchase.category}
-                  onChange={(e) =>
-                    setPurchase({ ...purchase, category: e.target.value })
-                  }
-                >
-                  {categories.map((category) => (
-                    <option key={category}>{category}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="modal__actions">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setPurchaseOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={!cardToken}>
-                  Run purchase
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <PurchaseModal
+        open={purchaseOpen}
+        cardLast4={account.card_last4}
+        cardAvailable={Boolean(cardToken)}
+        onClose={() => setPurchaseOpen(false)}
+        onConfirm={submitPurchase}
+      />
     </div>
   );
 }

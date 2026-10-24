@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { Check, X } from "lucide-react";
 import { formatUsd } from "../data/mock";
 import { Button } from "./Button";
 
@@ -70,7 +71,7 @@ export function DepositModal({
       >
         <header className="modal__header">
           <h2 id={titleId} className="modal__title">
-            Deposit funds
+            Deposit Funds
           </h2>
           <dl className="modal__meta">
             <div>
@@ -108,10 +109,17 @@ export function DepositModal({
             </p>
           ) : null}
           <div className="modal__actions">
-            <Button type="button" variant="secondary" onClick={onClose}>
+            <Button
+              type="button"
+              variant="secondary"
+              icon={X}
+              onClick={onClose}
+            >
               Cancel
             </Button>
-            <Button type="submit">Confirm</Button>
+            <Button type="submit" icon={Check}>
+              Confirm
+            </Button>
           </div>
         </form>
       </div>

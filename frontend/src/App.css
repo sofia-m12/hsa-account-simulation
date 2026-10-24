@@ -1,4 +1,4 @@
-/* Shell */
+/* Application shell and primary navigation */
 .app-shell {
   max-width: 1200px;
   margin: 0 auto;
@@ -95,11 +95,12 @@
   text-decoration: underline;
 }
 
-/* Buttons */
+/* Shared button variants */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
   min-height: 44px;
   padding: var(--space-2) var(--space-5);
   border-radius: var(--radius-control);
@@ -109,6 +110,10 @@
   transition:
     background-color 120ms ease,
     color 120ms ease;
+}
+
+.btn svg {
+  flex: 0 0 auto;
 }
 
 .btn:disabled {
@@ -134,7 +139,7 @@
   background: var(--color-tint);
 }
 
-/* Panels */
+/* Shared content panels */
 .panel {
   background: var(--color-surface);
   border: 1px solid var(--color-line);
@@ -154,7 +159,7 @@
   font-size: 1.375rem;
 }
 
-/* Tables */
+/* Shared responsive data tables */
 .table-wrap {
   overflow-x: auto;
 }
@@ -192,7 +197,7 @@
   font-weight: 500;
 }
 
-/* Badges */
+/* Transaction outcome badges */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -222,7 +227,7 @@
   border-color: var(--color-line);
 }
 
-/* Empty states */
+/* Shared empty-state messaging */
 .empty-state {
   color: var(--color-ink);
   opacity: 0.75;
@@ -244,13 +249,13 @@
   padding: var(--space-5) 0;
 }
 
-/* Home */
+/* Home page: account summary and recent activity */
 .home-page__intro {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-4);
-  margin-bottom: var(--space-7);
+  margin-bottom: var(--space-6);
 }
 
 .home-page__actions {
@@ -272,7 +277,12 @@
   }
 }
 
-/* Account */
+/* Account page: details, actions, balance, and activity */
+.account-page > .back-link {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+}
+
 .account-page__top {
   margin-bottom: var(--space-5);
 }
@@ -303,6 +313,7 @@
 }
 
 .account-page__actions {
+  /* Stack actions on narrow screens so each control remains easy to tap. */
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -317,20 +328,12 @@
 }
 
 .account-action-row {
+  /* Keep the conditional card action aligned with the purchase action. */
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--space-3);
   width: 100%;
-}
-
-.account-action-row .btn:last-child {
-  background: var(--color-ink);
-  color: var(--color-surface);
-}
-
-.account-action-row .btn:last-child:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-ink) 88%, white);
 }
 
 @media (min-width: 900px) {
@@ -391,12 +394,12 @@
   line-height: 1.1;
 }
 
-/* Transactions page */
+/* Global transactions page */
 .transactions-page .page-title {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
-/* Modal */
+/* Shared modal, form, and field presentation */
 .modal-backdrop {
   position: fixed;
   inset: 0;

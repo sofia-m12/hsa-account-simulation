@@ -85,3 +85,31 @@ cd frontend
 npm ci
 npm run dev
 ```
+
+### Frontend formatting and linting
+
+The frontend uses Prettier for consistent formatting and ESLint for static code
+checks. Both tools and their configuration are installed with the frontend
+development dependencies through `npm ci`.
+
+From `frontend/`, rewrite supported files with Prettier:
+
+```sh
+npm run format
+```
+
+Check formatting without changing files, then run ESLint:
+
+```sh
+npm run format:check
+npm run lint
+```
+
+Before committing frontend changes, run both checks and verify the production
+build:
+
+```sh
+npm run format:check
+npm run lint
+npm run build
+```

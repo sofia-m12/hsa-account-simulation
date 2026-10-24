@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { Check, X } from "lucide-react";
 import { Button } from "./Button";
 
 type CreateAccountModalProps = {
@@ -60,7 +61,7 @@ export function CreateAccountModal({
       >
         <header className="modal__header">
           <h2 id={titleId} className="modal__title">
-            Create account
+            Create Account
           </h2>
           <p className="modal__description">
             Start a new HSA account for a holder.
@@ -92,10 +93,17 @@ export function CreateAccountModal({
             </p>
           )}
           <div className="modal__actions">
-            <Button type="button" variant="secondary" onClick={onClose}>
+            <Button
+              type="button"
+              variant="secondary"
+              icon={X}
+              onClick={onClose}
+            >
               Cancel
             </Button>
-            <Button type="submit">Create account</Button>
+            <Button type="submit" icon={Check}>
+              Create Account
+            </Button>
           </div>
         </form>
       </div>
