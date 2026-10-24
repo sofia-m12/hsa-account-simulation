@@ -9,8 +9,9 @@ import {
   type PurchaseFormValues,
 } from "../components/PurchaseModal";
 import { TransactionsTable } from "../components/TransactionsTable";
-import { api, type Account, type Transaction } from "../data/api";
+import { ApiError, api, type Account, type Transaction } from "../data/api";
 import { formatUsd } from "../utils/formatters";
+import { NotFoundPage } from "./NotFoundPage";
 
 export function AccountPage() {
   const { accountId = "" } = useParams();
@@ -21,6 +22,7 @@ export function AccountPage() {
   const [cardToken, setCardToken] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [accountNotFound, setAccountNotFound] = useState(false);
   async function load() {
     try {
       const [a, tx] = await Promise.all([
@@ -35,14 +37,26 @@ export function AccountPage() {
   }
   useEffect(() => {
     void (async () => {
+      let loadedAccount: Account;
       try {
-        const [a, tx] = await Promise.all([
-          api.account(accountId),
-          api.transactions(accountId),
-        ]);
-        setAccount(a);
-        setTransactions(tx);
-        if (a.card_last4) {
+        loadedAccount = await api.account(accountId);
+      } catch (err) {
+        if (
+          err instanceof ApiError &&
+          (err.status === 404 || err.status === 422)
+        ) {
+          setAccountNotFound(true);
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Unable to load account");
+        return;
+      }
+
+      setAccount(loadedAccount);
+      setAccountNotFound(false);
+      try {
+        setTransactions(await api.transactions(accountId));
+        if (loadedAccount.card_last4) {
           const card = await api.issueCard(accountId);
           setCardToken(card.token);
         }
@@ -51,6 +65,7 @@ export function AccountPage() {
       }
     })();
   }, [accountId]);
+  if (accountNotFound) return <NotFoundPage />;
   if (error && !account)
     return (
       <div className="page">

@@ -38,6 +38,16 @@ export const categories = [
   "Other",
 ];
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -49,7 +59,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const message = Array.isArray(detail)
       ? detail.map((item) => item.msg).join(", ")
       : detail;
-    throw new Error(message || "Request failed");
+    throw new ApiError(message || "Request failed", response.status);
   }
   return body as T;
 }
