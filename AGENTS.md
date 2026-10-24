@@ -12,6 +12,8 @@ Single-context domain docs: root `GLOSSARY.md` and `docs/adr/`. See `docs/agents
 
 Use `/tdd` for money handling, purchase decisions, atomicity, and concurrency behavior. Run the relevant tests and frontend checks, then use `/code-review` on the local diff against the assignment and `architecture.md`.
 
+Use `hsa_test` as the PostgreSQL test database so backend tests remain isolated from development data.
+
 Keep backend API models and responses aligned with the authoritative database schema. If an API field is omitted, renamed, or computed instead of matching a database column, call out the difference to the user before proceeding.
 
 ### Design System Tokens
