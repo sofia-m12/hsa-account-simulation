@@ -1,13 +1,13 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
 
 type PanelProps = {
-  title?: string
-  action?: ReactNode
-  children: ReactNode
-  className?: string
-}
+  title?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+};
 
-export function Panel({ title, action, children, className = '' }: PanelProps) {
+export function Panel({ title, action, children, className = "" }: PanelProps) {
   return (
     <section className={`panel ${className}`.trim()}>
       {(title || action) && (
@@ -18,5 +18,5 @@ export function Panel({ title, action, children, className = '' }: PanelProps) {
       )}
       {children}
     </section>
-  )
+  );
 }

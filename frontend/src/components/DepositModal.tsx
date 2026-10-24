@@ -1,15 +1,15 @@
-import { useEffect, useId, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
-import { formatUsd } from '../data/mock'
-import { Button } from './Button'
+import { useEffect, useId, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { formatUsd } from "../data/mock";
+import { Button } from "./Button";
 
 type DepositModalProps = {
-  open: boolean
-  accountNumber: string
-  balanceCents: number
-  onClose: () => void
-  onConfirm: (amountCents: number) => void
-}
+  open: boolean;
+  accountNumber: string;
+  balanceCents: number;
+  onClose: () => void;
+  onConfirm: (amountCents: number) => void;
+};
 
 export function DepositModal({
   open,
@@ -18,45 +18,45 @@ export function DepositModal({
   onClose,
   onConfirm,
 }: DepositModalProps) {
-  const titleId = useId()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [amount, setAmount] = useState('')
-  const [error, setError] = useState('')
+  const titleId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const frame = requestAnimationFrame(() => {
-      setAmount('')
-      setError('')
-      inputRef.current?.focus()
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [open])
+      setAmount("");
+      setError("");
+      inputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === "Escape") onClose();
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
 
-  if (!open) return null
+  if (!open) return null;
 
   function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    const parsed = Number.parseFloat(amount)
+    event.preventDefault();
+    const parsed = Number.parseFloat(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setError('Enter a positive dollar amount.')
-      return
+      setError("Enter a positive dollar amount.");
+      return;
     }
-    const cents = Math.round(parsed * 100)
+    const cents = Math.round(parsed * 100);
     if (cents <= 0) {
-      setError('Enter a positive dollar amount.')
-      return
+      setError("Enter a positive dollar amount.");
+      return;
     }
-    onConfirm(cents)
+    onConfirm(cents);
   }
 
   return (
@@ -95,11 +95,11 @@ export function DepositModal({
               placeholder="0.00"
               value={amount}
               onChange={(event) => {
-                setAmount(event.target.value)
-                setError('')
+                setAmount(event.target.value);
+                setError("");
               }}
               aria-invalid={Boolean(error)}
-              aria-describedby={error ? 'deposit-error' : undefined}
+              aria-describedby={error ? "deposit-error" : undefined}
             />
           </label>
           {error ? (
@@ -116,5 +116,5 @@ export function DepositModal({
         </form>
       </div>
     </div>
-  )
+  );
 }

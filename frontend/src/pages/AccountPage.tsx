@@ -1,27 +1,278 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Button } from '../components/Button'
-import { DepositModal } from '../components/DepositModal'
-import { Panel } from '../components/Panel'
-import { TransactionsTable } from '../components/TransactionsTable'
-import { api, categories, formatUsd, type Account, type Transaction } from '../data/api'
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useParams } from "react-router-dom";
+import { Button } from "../components/Button";
+import { DepositModal } from "../components/DepositModal";
+import { Panel } from "../components/Panel";
+import { TransactionsTable } from "../components/TransactionsTable";
+import {
+  api,
+  categories,
+  formatUsd,
+  type Account,
+  type Transaction,
+} from "../data/api";
 
 export function AccountPage() {
-  const { accountId = '' } = useParams()
-  const [account, setAccount] = useState<Account>()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [depositOpen, setDepositOpen] = useState(false)
-  const [purchaseOpen, setPurchaseOpen] = useState(false)
-  const [cardToken, setCardToken] = useState('')
-  const [purchase, setPurchase] = useState({ amount: '', merchant: '', category: categories[0] })
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  async function load() { try { const [a, tx] = await Promise.all([api.account(accountId), api.transactions(accountId)]); setAccount(a); setTransactions(tx) } catch (err) { setError(err instanceof Error ? err.message : 'Unable to load account') } }
-  useEffect(() => { void (async () => { try { const [a, tx] = await Promise.all([api.account(accountId), api.transactions(accountId)]); setAccount(a); setTransactions(tx); if (a.card_last4) { const card = await api.issueCard(accountId); setCardToken(card.token) } } catch (err) { setError(err instanceof Error ? err.message : 'Unable to load account') } })() }, [accountId])
-  if (error && !account) return <div className="page"><p className="field__error">{error}</p><Link className="inline-link" to="/">Back to home</Link></div>
-  if (!account) return <div className="page"><p className="empty-state">Loading account…</p></div>
-  async function issueCard() { try { const card = await api.issueCard(accountId); setCardToken(card.token); setAccount(await api.account(accountId)) } catch (err) { setError(err instanceof Error ? err.message : 'Unable to issue card') } }
-  async function deposit(amount: string) { try { const result = await api.deposit(accountId, amount); setAccount(result.account); setDepositOpen(false); await load() } catch (err) { setError(err instanceof Error ? err.message : 'Unable to deposit funds') } }
-  async function submitPurchase(event: FormEvent) { event.preventDefault(); setMessage(''); setError(''); try { const result = await api.purchase(accountId, { ...purchase, card_token: cardToken }); setAccount(result.account); setMessage(result.transaction.outcome === 'APPROVED' ? 'Purchase approved.' : `Purchase declined: ${result.transaction.decline_reason}`); setTransactions(await api.transactions(accountId)); setPurchaseOpen(false) } catch (err) { setError(err instanceof Error ? err.message : 'Unable to process purchase') } }
-  return <div className="page account-page"><Link className="back-link" to="/">Back to accounts</Link>{error && <p className="field__error" role="alert">{error}</p>}{message && <p className="success-message" role="status">{message}</p>}<div className="account-page__layout"><div className="account-page__main"><Panel title="Account details"><div className="account-details"><div className="account-details__identity"><p className="account-details__holder">{account.holder_name}</p><p className="account-details__card">Card: {account.card_last4 ? `•••• ${account.card_last4}` : 'Not issued'}</p><p className="account-details__meta">Acct. #: {account.account_number}</p></div><div className="account-details__balance"><p className="account-details__balance-label">Available balance</p><p className="account-details__balance-value">{formatUsd(account.balance_cents)}</p></div></div></Panel></div><aside className="account-page__actions"><Button className="account-action" onClick={() => setDepositOpen(true)}>Deposit funds</Button><div className="account-action-row">{!account.card_last4 && <Button className="account-action" variant="secondary" onClick={issueCard}>Issue simulated card</Button>}<Button className="account-action" variant="secondary" onClick={() => setPurchaseOpen(true)}>Make a purchase</Button></div></aside><Panel className="account-page__activity" title="Activity"><TransactionsTable transactions={transactions} emptyMessage="No activity yet. Deposit funds to get started." /></Panel></div><DepositModal open={depositOpen} accountNumber={String(account.account_number)} balanceCents={account.balance_cents} onClose={() => setDepositOpen(false)} onConfirm={(cents) => void deposit((cents / 100).toFixed(2))} />{purchaseOpen && <div className="modal-backdrop" role="presentation" onClick={() => setPurchaseOpen(false)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="purchase-title" onClick={(event) => event.stopPropagation()}><header className="modal__header"><h2 id="purchase-title" className="modal__title">Make a purchase</h2></header><form className="modal__form" onSubmit={submitPurchase}><p className="field__hint">{account.card_last4 ? 'Your issued card is ready.' : 'Issue a simulated card before making a purchase.'}</p><label className="field"><span className="field__label">Amount</span><input className="field__input" value={purchase.amount} onChange={(e) => setPurchase({ ...purchase, amount: e.target.value })} placeholder="0.00" required /></label><label className="field"><span className="field__label">Merchant</span><input className="field__input" value={purchase.merchant} onChange={(e) => setPurchase({ ...purchase, merchant: e.target.value })} placeholder="Merchant name" required /></label><label className="field"><span className="field__label">Category</span><select className="field__input" value={purchase.category} onChange={(e) => setPurchase({ ...purchase, category: e.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select></label><div className="modal__actions"><Button type="button" variant="secondary" onClick={() => setPurchaseOpen(false)}>Cancel</Button><Button type="submit" disabled={!cardToken}>Run purchase</Button></div></form></div></div>}</div>
+  const { accountId = "" } = useParams();
+  const [account, setAccount] = useState<Account>();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [cardToken, setCardToken] = useState("");
+  const [purchase, setPurchase] = useState({
+    amount: "",
+    merchant: "",
+    category: categories[0],
+  });
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  async function load() {
+    try {
+      const [a, tx] = await Promise.all([
+        api.account(accountId),
+        api.transactions(accountId),
+      ]);
+      setAccount(a);
+      setTransactions(tx);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load account");
+    }
+  }
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [a, tx] = await Promise.all([
+          api.account(accountId),
+          api.transactions(accountId),
+        ]);
+        setAccount(a);
+        setTransactions(tx);
+        if (a.card_last4) {
+          const card = await api.issueCard(accountId);
+          setCardToken(card.token);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to load account");
+      }
+    })();
+  }, [accountId]);
+  if (error && !account)
+    return (
+      <div className="page">
+        <p className="field__error">{error}</p>
+        <Link className="inline-link" to="/">
+          Back to home
+        </Link>
+      </div>
+    );
+  if (!account)
+    return (
+      <div className="page">
+        <p className="empty-state">Loading account…</p>
+      </div>
+    );
+  async function issueCard() {
+    try {
+      const card = await api.issueCard(accountId);
+      setCardToken(card.token);
+      setAccount(await api.account(accountId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to issue card");
+    }
+  }
+  async function deposit(amount: string) {
+    try {
+      const result = await api.deposit(accountId, amount);
+      setAccount(result.account);
+      setDepositOpen(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to deposit funds");
+    }
+  }
+  async function submitPurchase(event: FormEvent) {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+    try {
+      const result = await api.purchase(accountId, {
+        ...purchase,
+        card_token: cardToken,
+      });
+      setAccount(result.account);
+      setMessage(
+        result.transaction.outcome === "APPROVED"
+          ? "Purchase approved."
+          : `Purchase declined: ${result.transaction.decline_reason}`,
+      );
+      setTransactions(await api.transactions(accountId));
+      setPurchaseOpen(false);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to process purchase",
+      );
+    }
+  }
+  return (
+    <div className="page account-page">
+      <Link className="back-link" to="/">
+        Back to accounts
+      </Link>
+      {error && (
+        <p className="field__error" role="alert">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p className="success-message" role="status">
+          {message}
+        </p>
+      )}
+      <div className="account-page__layout">
+        <div className="account-page__main">
+          <Panel title="Account details">
+            <div className="account-details">
+              <div className="account-details__identity">
+                <p className="account-details__holder">{account.holder_name}</p>
+                <p className="account-details__card">
+                  Card:{" "}
+                  {account.card_last4
+                    ? `•••• ${account.card_last4}`
+                    : "Not issued"}
+                </p>
+                <p className="account-details__meta">
+                  Acct. #: {account.account_number}
+                </p>
+              </div>
+              <div className="account-details__balance">
+                <p className="account-details__balance-label">
+                  Available balance
+                </p>
+                <p className="account-details__balance-value">
+                  {formatUsd(account.balance_cents)}
+                </p>
+              </div>
+            </div>
+          </Panel>
+        </div>
+        <aside className="account-page__actions">
+          <Button
+            className="account-action"
+            onClick={() => setDepositOpen(true)}
+          >
+            Deposit funds
+          </Button>
+          <div className="account-action-row">
+            {!account.card_last4 && (
+              <Button
+                className="account-action"
+                variant="secondary"
+                onClick={issueCard}
+              >
+                Issue simulated card
+              </Button>
+            )}
+            <Button
+              className="account-action"
+              variant="secondary"
+              onClick={() => setPurchaseOpen(true)}
+            >
+              Make a purchase
+            </Button>
+          </div>
+        </aside>
+        <Panel className="account-page__activity" title="Activity">
+          <TransactionsTable
+            transactions={transactions}
+            emptyMessage="No activity yet. Deposit funds to get started."
+          />
+        </Panel>
+      </div>
+      <DepositModal
+        open={depositOpen}
+        accountNumber={String(account.account_number)}
+        balanceCents={account.balance_cents}
+        onClose={() => setDepositOpen(false)}
+        onConfirm={(cents) => void deposit((cents / 100).toFixed(2))}
+      />
+      {purchaseOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => setPurchaseOpen(false)}
+        >
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="purchase-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="modal__header">
+              <h2 id="purchase-title" className="modal__title">
+                Make a purchase
+              </h2>
+            </header>
+            <form className="modal__form" onSubmit={submitPurchase}>
+              <p className="field__hint">
+                {account.card_last4
+                  ? "Your issued card is ready."
+                  : "Issue a simulated card before making a purchase."}
+              </p>
+              <label className="field">
+                <span className="field__label">Amount</span>
+                <input
+                  className="field__input"
+                  value={purchase.amount}
+                  onChange={(e) =>
+                    setPurchase({ ...purchase, amount: e.target.value })
+                  }
+                  placeholder="0.00"
+                  required
+                />
+              </label>
+              <label className="field">
+                <span className="field__label">Merchant</span>
+                <input
+                  className="field__input"
+                  value={purchase.merchant}
+                  onChange={(e) =>
+                    setPurchase({ ...purchase, merchant: e.target.value })
+                  }
+                  placeholder="Merchant name"
+                  required
+                />
+              </label>
+              <label className="field">
+                <span className="field__label">Category</span>
+                <select
+                  className="field__input"
+                  value={purchase.category}
+                  onChange={(e) =>
+                    setPurchase({ ...purchase, category: e.target.value })
+                  }
+                >
+                  {categories.map((category) => (
+                    <option key={category}>{category}</option>
+                  ))}
+                </select>
+              </label>
+              <div className="modal__actions">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setPurchaseOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={!cardToken}>
+                  Run purchase
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1,17 +1,17 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = 'primary' | 'secondary'
+type Variant = "primary" | "secondary";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant
-  children: ReactNode
-}
+  variant?: Variant;
+  children: ReactNode;
+};
 
 export function Button({
-  variant = 'primary',
-  className = '',
+  variant = "primary",
+  className = "",
   children,
-  type = 'button',
+  type = "button",
   ...rest
 }: ButtonProps) {
   return (
@@ -22,5 +22,5 @@ export function Button({
     >
       {children}
     </button>
-  )
+  );
 }

@@ -1,9 +1,9 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { AppLayout } from './components/AppLayout'
-import { AccountPage } from './pages/AccountPage'
-import { HomePage } from './pages/HomePage'
-import { TransactionsPage } from './pages/TransactionsPage'
-import './App.css'
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AppLayout } from "./components/AppLayout";
+import { AccountPage } from "./pages/AccountPage";
+import { HomePage } from "./pages/HomePage";
+import { TransactionsPage } from "./pages/TransactionsPage";
+import "./App.css";
 
 function App() {
   return (
@@ -17,7 +17,7 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

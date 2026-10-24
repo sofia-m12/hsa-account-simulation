@@ -1,10 +1,10 @@
-import { Link } from 'react-router-dom'
-import type { Account } from '../data/api'
-import { formatDate, formatUsd } from '../data/api'
+import { Link } from "react-router-dom";
+import type { Account } from "../data/api";
+import { formatDate, formatUsd } from "../data/api";
 
 type AccountsTableProps = {
-  accounts: Account[]
-}
+  accounts: Account[];
+};
 
 export function AccountsTable({ accounts }: AccountsTableProps) {
   if (accounts.length === 0) {
@@ -12,7 +12,7 @@ export function AccountsTable({ accounts }: AccountsTableProps) {
       <p className="empty-state">
         No accounts yet. Create an account to get started.
       </p>
-    )
+    );
   }
 
   return (
@@ -42,5 +42,5 @@ export function AccountsTable({ accounts }: AccountsTableProps) {
         </tbody>
       </table>
     </div>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from "react-router-dom";
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  isActive ? 'site-nav__link site-nav__link--active' : 'site-nav__link'
+  isActive ? "site-nav__link site-nav__link--active" : "site-nav__link";
 
 export function AppLayout() {
   return (
@@ -21,5 +21,5 @@ export function AppLayout() {
       </header>
       <Outlet />
     </div>
-  )
+  );
 }

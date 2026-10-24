@@ -1,32 +1,39 @@
-import type { Transaction } from '../data/api'
-import { formatUsd } from '../data/api'
-import { OutcomeBadge } from './OutcomeBadge'
+import type { Transaction } from "../data/api";
+import { formatUsd } from "../data/api";
+import { OutcomeBadge } from "./OutcomeBadge";
 
 type TransactionsTableProps = {
-  transactions: Transaction[]
-  emptyMessage?: string
-}
+  transactions: Transaction[];
+  emptyMessage?: string;
+};
 
 function formatReason(reason: string | null): string {
-  if (!reason) return '—'
-  return reason.toLowerCase().split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+  if (!reason) return "—";
+  return reason
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 function formatTime(timestamp: string): string {
-  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(timestamp))
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
 }
 
 function formatShortDate(timestamp: string): string {
-  const date = new Date(timestamp)
-  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${String(date.getFullYear()).slice(-2)}`
+  const date = new Date(timestamp);
+  return `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}/${String(date.getFullYear()).slice(-2)}`;
 }
 
 export function TransactionsTable({
   transactions,
-  emptyMessage = 'No transactions yet.',
+  emptyMessage = "No transactions yet.",
 }: TransactionsTableProps) {
   if (transactions.length === 0) {
-    return <p className="empty-state">{emptyMessage}</p>
+    return <p className="empty-state">{emptyMessage}</p>;
   }
 
   return (
@@ -47,7 +54,7 @@ export function TransactionsTable({
             <tr key={tx.id}>
               <td>{formatShortDate(tx.created_at)}</td>
               <td>{formatTime(tx.created_at)}</td>
-              <td>{tx.merchant || 'Deposit'}</td>
+              <td>{tx.merchant || "Deposit"}</td>
               <td className="amount">{formatUsd(tx.amount_cents)}</td>
               <td>
                 <OutcomeBadge outcome={tx.outcome} />
@@ -58,5 +65,5 @@ export function TransactionsTable({
         </tbody>
       </table>
     </div>
-  )
+  );
 }
