@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UserPlus } from "lucide-react";
+import { ShoppingBag, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AccountsTable } from "../components/AccountsTable";
 import { Button } from "../components/Button";
@@ -53,9 +53,19 @@ export function HomePage() {
         <div>
           <h1 className="page-title">Welcome</h1>
         </div>
-        <Button icon={UserPlus} onClick={() => setCreateOpen(true)}>
-          Create Account
-        </Button>
+        <div className="home-page__actions">
+          <Button icon={UserPlus} onClick={() => setCreateOpen(true)}>
+            Create Account
+          </Button>
+          <Button
+            icon={ShoppingBag}
+            onClick={() =>
+              navigate("/transactions", { state: { simulate: true } })
+            }
+          >
+            Simulate Transaction
+          </Button>
+        </div>
       </div>
       {error && (
         <p className="field__error" role="alert">

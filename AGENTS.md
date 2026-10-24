@@ -45,10 +45,9 @@ not a marketing landing page.
   surfaces, a 1px line border, 12–16px radius, and no default drop shadow.
   Make the balance the visual anchor with large serif numerals; render activity
   as a structured, date-aware list rather than a grid of interchangeable cards.
-- **Interaction:** provide a clear `:focus-visible` ring in teal, visible
-  validation and server-error messages, and outcome badges that pair color with
-  text. Respect `prefers-reduced-motion`; transitions should clarify a direct
-  interaction, never decorate the page.
+- **Interaction:** provide visible validation and server-error messages, and
+  outcome badges that pair color with text. Respect `prefers-reduced-motion`;
+  transitions should clarify a direct interaction, never decorate the page.
 
 ## Commit messages
 Generate a commit message for your work once you have finished a full slice. Never commit without explicit approval.
