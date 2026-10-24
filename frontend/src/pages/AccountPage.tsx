@@ -56,7 +56,7 @@ export function AccountPage() {
       <div className="page">
         <p className="field__error">{error}</p>
         <Link className="inline-link" to="/">
-          Back to home
+          Back to Home
         </Link>
       </div>
     );

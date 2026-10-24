@@ -34,7 +34,7 @@ export function TransactionsPage() {
   return (
     <div className="page transactions-page">
       <Link className="back-link" to="/">
-        Back to home
+        Back to Home
       </Link>
       <h1 className="page-title">Transactions</h1>
       <Panel>

@@ -23,8 +23,11 @@
 }
 
 .site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   color: var(--color-ink);
 }
 
@@ -38,14 +41,15 @@
 }
 
 .site-nav__link {
+  position: relative;
+  font-family: var(--font-display);
   font-size: 0.9375rem;
   color: var(--color-ink);
-  opacity: 0.7;
-  padding-bottom: 2px;
-  border-bottom: 2px solid transparent;
-  transition:
-    opacity 120ms ease,
-    border-color 120ms ease;
+  opacity: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-ink);
+  border-radius: var(--radius-control);
+  transition: opacity 120ms ease;
 }
 
 .site-nav__link:hover {
@@ -54,7 +58,16 @@
 
 .site-nav__link--active {
   opacity: 1;
-  border-bottom-color: var(--color-teal);
+}
+
+.site-nav__link--active::after {
+  content: "";
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: 5px;
+  height: 2px;
+  background: var(--color-teal);
 }
 
 .site-nav__link:focus-visible {
@@ -75,6 +88,8 @@
 }
 
 .back-link {
+  display: inline-block;
+  margin-bottom: var(--space-3);
   font-size: 0.9375rem;
   opacity: 0.75;
 }
