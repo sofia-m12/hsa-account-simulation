@@ -1,131 +1,86 @@
 # Demo video script
 
-## Opening and application demo — 1:40
+Target length: five minutes or less. Add concrete screenshots, commands, and
+final wording as each feature is completed.
 
-**Show:** Start on the Home page.
+## 1. Demo of the application
 
-**Say:**
+**Show:** Open the app, create or select an HSA account, view the balance, make
+a deposit, issue the simulated card, submit a purchase, and review activity.
 
-> Hey y'all—hello, and good morning or afternoon to whoever is reviewing this.
-> I hope you're doing well coming into this last week of October. I know I'm
-> definitely excited for Halloween!
->
-> Okay, I'll get into it. This is my app. I called it HSA Platform—super
-> creative name, I know—and I'm going to walk you through what it does and how.
->
-> There are three main pages: Home, an individual Account page, and the global
-> Transactions page. Home is where you land when the app loads. It has the main
-> navigation, a table of all existing HSA accounts, and Recent Activity showing
-> the five newest transactions across those accounts. Account numbers are links,
-> so I'll open one from here.
+**Say:** Explain the user flow in plain language and point out the loading,
+empty, validation, approval, and decline states.
 
-**Show:** Create a new account with a lowercase name such as `kelly h`, then
-open it. Deposit $100 and issue its simulated card.
+**Target time:** 1:45
 
-**Say:**
+## 2. System architecture
 
-> I can create an account from this modal. The API normalizes the holder name,
-> and every new account starts with a zero-dollar USD balance. On the Account
-> page I can deposit funds and issue one simulated card. The UI displays only
-> the last four digits; it never puts the full token in a visible field.
+**Show:** The architecture diagram and the running Docker Compose services.
 
-**Show:** Make an approved Medical purchase. Open Transactions, run a Travel
-purchase, and point out the decline reason and unchanged balance.
+**Say:** Describe the React + TypeScript + Vite frontend, FastAPI backend,
+SQLAlchemy/psycopg data access, and PostgreSQL database. Mention that Compose
+starts the database, backend, and frontend together.
 
-**Say:**
+**Target time:** 0:45
 
-> A Medical purchase is qualified and approves when the balance can cover it.
-> The global Transactions page shows activity across every account, and it also
-> lets a reviewer search by holder name or account number and simulate a
-> purchase without navigating back to the Account page. Travel is not a
-> qualified category, so this request is recorded as declined with an
-> Unqualified Expense reason and does not change the balance.
+Card issuance uses one simulated numeric token per account. The backend stores
+the token only for internal card/purchase lookup and returns the last four
+digits plus the issue timestamp; repeated issuance returns the same card.
 
-## System architecture — 0:35
+## 3. Data model
 
-**Show:** The system diagram in `docs/planning/architecture.md`, followed by the
-running Docker Compose services.
+**Show:** The three-table diagram and `backend/schema.sql`.
 
-**Say:**
+**Say:** Explain `accounts`, `cards`, and `transactions`, including the
+one-card-per-account constraint, integer cents, USD-only currency, UUID keys,
+unique decimal account numbers, and safe card-token handling.
 
-> Under the UI, the frontend is React, TypeScript, and Vite. nginx serves the
-> production build and proxies relative API requests to FastAPI. FastAPI and
-> Pydantic validate the API boundary, SQLAlchemy with psycopg handles data
-> access, and PostgreSQL owns the persisted data, constraints, and concurrency
-> behavior. Docker Compose starts PostgreSQL, the repeatable seed job, the
-> backend, and the frontend together.
+**Target time:** 0:45
 
-## Data model — 0:35
+## 4. How transactions are processed
 
-**Show:** The three-table diagram, then briefly show `backend/schema.sql`.
+**Show:** A successful deposit or purchase, a declined purchase, and the
+relevant service/test code.
 
-**Say:**
+**Say:** Explain that money is represented as integer cents, eligibility and
+funds are decided on the server, and balance changes plus transaction history
+are committed atomically. Mention row locking for concurrent purchases and
+that declined purchases do not debit the account. Integer cents avoid
+floating-point rounding errors, so `$25.50` is stored and calculated as `2550`.
 
-> The model has three tables: accounts, cards, and transactions. Accounts use
-> UUIDs internally and unique decimal account numbers in the UI. Money is stored
-> as integer cents to avoid floating-point errors, and currency is constrained
-> to USD. A unique card account ID enforces one card per account. Deposits and
-> purchases share transaction history, with database checks keeping approved
-> and declined rows internally consistent.
+**Target time:** 0:55
 
-## Transaction processing and concurrency — 0:55
+## 5. What you would improve with more time
 
-**Show:** The purchase-decision diagram. Select a separate, prepared seed account
-with exactly $100, switch to Concurrency test, and submit $80 and $50 qualified
-purchases. Show the resulting rows and final balance.
+**Show:** A short list of deferred work in the plan or architecture notes.
 
-**Say:**
+**Say:** Discuss prioritized improvements such as stronger card-token
+protection, richer card lifecycle controls, authentication, broader automated
+integration/concurrency coverage, and additional accessibility or UX polish.
 
-> Purchase decisions stay on the server. It locks the account row and checks
-> the card token, whether the expense is qualified, and then whether there are
-> sufficient funds. Those checks have a fixed order, so each decline has one
-> clear reason. Only an approval debits the account, and the debit and history
-> row commit atomically.
->
-> The concurrency mode sends two normal purchase requests at the same time—
-> there is no special test-only endpoint. PostgreSQL's row lock makes the second
-> request evaluate the balance after the first commits. I'm using a separate
-> seeded account with exactly $100 here so the result is easy to see. With $80
-> and $50 against $100, exactly one purchase approves and one declines for
-> insufficient funds. Either request may win; the important part is that the
-> balance cannot be overspent.
+**Target time:** 0:30
 
-## What I would improve with more time — 0:25
+## 6. How you used AI and validated its output
 
-**Show:** The tradeoffs and limitations section of `architecture.md`.
+**Show:** The relevant documentation, tests, and verification commands.
 
-**Say:**
+**Say:** Explain which development tasks used AI assistance, then show how the
+output was checked through focused design review, schema inspection, frontend
+build/type checks, backend tests, Docker Compose validation, and manual browser
+flows.
 
-> With more time, I would add authentication and account ownership, versioned
-> database migrations, a paginated global-transactions endpoint, stronger card
-> token protection through a payment provider or encryption, and card lifecycle
-> controls. I would also add broader end-to-end and accessibility coverage.
-> Name normalization is intentionally deterministic today; production code
-> would need explicit rules for names that simple title casing does not handle
-> well.
+Mention the initial model gap: I first represented only the card fields
+needed by the account lookup query in `backend/app/models.py`, leaving out the
+schema's `cards.id` and `cards.issued_at` columns. You identified that mismatch
+and told me to align the model with the database; I corrected the model and
+would validate the result against `backend/schema.sql` and the API tests. I then added a line in agents.md: "Keep backend API models and responses aligned with"
+    I also checked edits to models.py and other files with my architecture.doc and schema draw ups that were my source of truth
 
-## AI usage and validation — 0:25
+**Target time:** 0:20
 
-**Show:** `docs/planning/ai-usage.md`, a focused test result, and `make check`.
+## Final checklist
 
-**Say:**
-
-> I used Codex/ChatGPT and Cursor Agent Chat for planning, implementation,  
-> diagnosis, review, and targeted UI iteration. My normal loop was to plan a  
-> small commit, challenge unclear requirements, implement it test-first, run the  
-> commands myself and test in browser, review the diff, and only then commit it.
->
-> I verified the final result with backend and frontend tests,
-> formatting and lint checks, production builds, direct database inspection,
-> and full browser smoke tests.
-
-## Recording checklist
-
-- Reset or seed the data before recording.
-- Prepare and rehearse the separate seeded account used for the $100
-concurrency example; do not use it for the earlier purchase walkthrough.
-- Increase browser and editor text size enough for the recording.
-- Keep terminals prepared so the video does not wait for builds.
-- Show visible outcomes first and code only when it explains a decision.
-- Confirm the final recording is under five minutes.
-- Add the final video link to the README before submission.
+- Keep the complete recording under five minutes.
+- Use seeded data only when it makes the flow faster to demonstrate.
+- Prefer visible outcomes over long code walkthroughs.
+- Replace each placeholder with final UI screenshots, commands, and narration.
