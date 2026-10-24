@@ -24,15 +24,35 @@ def client():
 
 
 def test_create_account_returns_zero_balance_usd_and_normalized_name(client):
-    response = client.post("/api/accounts", json={"holder_name": "  Jane Smith  "})
+    response = client.post("/api/accounts", json={"holder_name": "  kelly h  "})
 
     assert response.status_code == 201
     body = response.json()
-    assert body["holder_name"] == "Jane Smith"
+    assert body["holder_name"] == "Kelly H"
     assert body["currency"] == "USD"
     assert body["balance_cents"] == 0
     assert body["account_number"] >= 1_000_000_000
     assert body["card_last4"] is None
+
+
+@pytest.mark.parametrize(
+    ("raw_name", "expected_name"),
+    [
+        ("  kelly h  ", "Kelly H"),
+        ("mary-jane watson", "Mary-Jane Watson"),
+        ("o'brien", "O'Brien"),
+        ("Kelly H", "Kelly H"),
+        ("KELLY H", "Kelly H"),
+    ],
+)
+def test_create_account_normalizes_holder_name_variants(client, raw_name, expected_name):
+    created = client.post("/api/accounts", json={"holder_name": raw_name})
+    assert created.status_code == 201
+    assert created.json()["holder_name"] == expected_name
+
+    persisted = client.get(f"/api/accounts/{created.json()['id']}")
+    assert persisted.status_code == 200
+    assert persisted.json()["holder_name"] == expected_name
 
 
 @pytest.mark.parametrize("payload", [{}, {"holder_name": "   "}, {"holder_name": "x" * 121}])

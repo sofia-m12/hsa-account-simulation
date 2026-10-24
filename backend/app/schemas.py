@@ -10,10 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class AccountCreate(BaseModel):
     holder_name: str = Field(min_length=1, max_length=120)
 
-    @field_validator("holder_name")
+    @field_validator("holder_name", mode="before")
     @classmethod
-    def normalize_holder_name(cls, value: str) -> str:
-        normalized = value.strip()
+    def normalize_holder_name(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = " ".join(value.split()).title()
         if not normalized:
             raise ValueError("holder_name must not be blank")
         return normalized
