@@ -6,7 +6,8 @@ A local web app that simulates HSA accounts, deposits, virtual debit cards, and 
 
 - [Architecture](docs/planning/architecture.md)
 - [AI usage](docs/planning/ai-usage.md)
-- Demo: 
+- [Watch the hosted demo](https://drive.google.com/file/d/1mVpFmOHHMMA2Qt_YnreGptmimfVchv-8/view?usp=drive_link)
+- [Download the repository copy](docs/demo-hsa-app.mov)
 
 ```text
 hsa-account-simulation/
@@ -16,6 +17,8 @@ hsa-account-simulation/
 │   └── planning/
 │       ├── architecture.md
 │       └── ai-usage.md
+├── AGENTS.md
+├── Makefile
 ├── compose.yaml
 ├── README.md
 └── .gitignore
